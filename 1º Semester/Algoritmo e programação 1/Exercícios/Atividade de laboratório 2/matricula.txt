@@ -1,0 +1,5 @@
+joão;pedro;marcelo;marcos;rabibi
+123;234;345;567;789
+matematica,portugues;matematica;portugues;;
+portugues;matematica;ciencia;geo;quimica
+123,345;123,234;;;

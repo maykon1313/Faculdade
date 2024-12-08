@@ -1,0 +1,12 @@
+{
+ "cmd":["bash", "-c", "g++ -fsanitize=address,undefined -fno-omit-frame-pointer -g -Wall -Wshadow -std=c++17 -Wno-unused-result -Wno-sign-compare -Wno-char-subscripts '${file}' && timeout 3.0s '${file_path}/a.out' < input.in > output.out"],
+ "working_dir": "${file_path}",
+ "selector": "source.cpp, source.c, source.c++",
+ "variants":
+ [
+   {
+     "name": "Test",
+     "cmd":["bash", "-c", "g++ -g -O2 -static -std=c++17 '${file}' && timeout 1.0s '${file_path}/a.out' <input.in > output.out"]
+   }
+ ]
+}

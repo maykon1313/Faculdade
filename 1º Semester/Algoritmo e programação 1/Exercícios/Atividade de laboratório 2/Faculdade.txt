@@ -1,0 +1,3 @@
+alunos_das_disciplinas:     [[''], ['234'], [''], ['987'], ['456'], ['']]
+disciplinas:                ['mat', 'por', 'ing', 'prog', 'literatura', 'amor']
+disciplinas_dos_alunos:     [['ing'], ['por'], ['prog'], ['literatura'], ['']]
