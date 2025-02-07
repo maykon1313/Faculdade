@@ -1,8 +1,0 @@
-frase = "Itimaliameudeusdoceucoisalinda"
-iterador = iter(frase)
-
-while true:
-    try:
-        print(next(iterador))
-    except:
-        break
