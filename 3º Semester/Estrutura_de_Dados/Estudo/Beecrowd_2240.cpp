@@ -1,54 +1,66 @@
+// Não funcionou através da recursão
+/*
 #include <iostream>
 #include <vector>
-#include <algorithm> // Para std::max
+#include <algorithm>
+
 using namespace std;
 
 struct no {
-    int num;
-    int left;
-    int mid;
-    int right;
+    int left = 0;
+    int mid = 0;
+    int right = 0;
 };
 
-int maiorSequenciaDescendente(int no, const vector<no>& arvore) {
-    if (no == 0) return 0;  // Nó 0 significa que não existe filho
+int maior_seq(int no_idx, vector<no>& v, int num) {
+    if (no_idx == 0 || no_idx >= v.size()) return num - 1;
 
-    int seqEsq = maiorSequenciaDescendente(arvore[no].left, arvore);  // Filhos esquerdo
-    int seqMid = maiorSequenciaDescendente(arvore[no].mid, arvore);   // Filhos central
-    int seqDir = maiorSequenciaDescendente(arvore[no].right, arvore); // Filhos direito
+    int n_mid = maior_seq(v[no_idx].mid, v, num + 1);
+    int n_left = maior_seq(v[no_idx].left, v, 1);
+    int n_right = maior_seq(v[no_idx].right, v, 1);
 
-    // A maior sequência descendente a partir deste nó é 1 + a maior sequência entre seus filhos
-    return 1 + max(max(seqEsq, seqMid), seqDir);
+    return max({n_mid, n_left, n_right});
 }
 
 int main() {
     int n_arv1 = 0, n_arv2 = 0;
+    int num, left, mid, right;
 
     // Árvore 1
     cin >> n_arv1;    
     vector<no> arv_canhota(n_arv1 + 1);
 
-    for (int i = 1; i <= n_arv1; i++) {
-        cin >> arv_canhota[i].num >> arv_canhota[i].left >> arv_canhota[i].mid;
+    for (int i = 0; i < n_arv1; i++) {
+        cin >> num >> left >> mid;
+        arv_canhota[num].left = left;
+        arv_canhota[num].mid = mid;
+        arv_canhota[num].right = 0;
     }
 
     // Árvore 2
     cin >> n_arv2;    
     vector<no> arv_destra(n_arv2 + 1);
 
-    for (int i = 1; i <= n_arv2; i++) {
-        cin >> arv_destra[i].num >> arv_destra[i].mid >> arv_destra[i].right;
+    for (int i = 0; i < n_arv2; i++) {
+        cin >> num >> mid >> right;
+        arv_destra[num].left = 0;
+        arv_destra[num].mid = mid;
+        arv_destra[num].right = right;
     }
 
     // Encontrar a maior sequência descendente da árvore canhota (começando da raiz, que é o nó 1)
-    int resultadoArv1 = maiorSequenciaDescendente(1, arv_canhota);
+    int resultadoArv1 = maior_seq(1, arv_canhota, 1);
 
     // Encontrar a maior sequência descendente da árvore destra (começando da raiz, que também é o nó 1)
-    int resultadoArv2 = maiorSequenciaDescendente(1, arv_destra);
+    int resultadoArv2 = maior_seq(1, arv_destra, 1);
     
-    // Exibir o resultado da maior sequência descendente entre as duas árvores
-    cout << max(resultadoArv1, resultadoArv2) << endl;
+    // Calcular interseção e resultado final
+    int interseccao = min(resultadoArv1, resultadoArv2);
+    int resultado = n_arv1 + n_arv2 - interseccao;
+    
+    // Exibir o resultado da menor quantidade de nós
+    cout << resultado << endl;
 
     return 0;
 }
-
+*/
