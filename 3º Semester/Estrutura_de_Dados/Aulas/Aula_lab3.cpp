@@ -12,13 +12,17 @@ struct AVL_Node {
 };
 typedef struct AVL_Node no;
 
-class Node {
-    public:
-        static AVL_Node* create(int value) {
-            return new AVL_Node{value, nullptr, nullptr, nullptr, 0};
-        }
-};
-typedef Node node;
+no* criar_novo_no(int num) {
+    no* node = new no;
+
+    node->num = num;
+    node->left = nullptr;
+    node->right = nullptr;
+    node->parent = nullptr;
+    node->b = 0;
+
+    return node;
+}
 
 class arv {
     no* raiz;
@@ -172,17 +176,17 @@ class arv {
 };
 
 int main() {
-    srand(time(nullptr));
+    srand(time(nullptr)); // Seed random number generator
 
     arv AVL;
 
     for (int i = 1; i <= 10;) {
-        no* novo_no = node::create(rand() % 21);
+        no* novo_no = criar_novo_no(rand() % 21);
 
         if (AVL.insert(novo_no)) {
             i++;
         } else {
-            delete novo_no; 
+            delete novo_no; // Avoid memory leak
         }
     }
 
