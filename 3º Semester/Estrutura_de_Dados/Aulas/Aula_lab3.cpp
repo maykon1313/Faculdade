@@ -172,7 +172,7 @@ class arv {
 };
 
 int main() {
-    srand(time(nullptr)); // Seed random number generator
+    srand(time(nullptr));
 
     arv AVL;
 
@@ -182,7 +182,7 @@ int main() {
         if (AVL.insert(novo_no)) {
             i++;
         } else {
-            delete novo_no; // Avoid memory leak
+            delete novo_no; 
         }
     }
 
