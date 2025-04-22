@@ -1,0 +1,8 @@
+addi t0, zero, 5      # t0 = 5
+addi t1, zero, 7      # t1 = 7
+
+# linha comentada
+add  t2, t0, t1       # soma t0 e t1
+
+lui  t3, 0x10000      # carrega endereço base
+sw   t2, 0(t3)        # salva resultado
