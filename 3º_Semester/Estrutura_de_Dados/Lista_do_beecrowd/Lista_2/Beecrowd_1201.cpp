@@ -1,222 +1,205 @@
 #include <iostream>
-#include <string>
-#include <stack>
 
 using namespace std;
 
 struct no {
+    int valor;
     struct no* esq;
     struct no* dir;
-    int valor;
+    struct no* pai;
+
+    no(int num) : valor(num), esq(nullptr), dir(nullptr), pai(nullptr) {}
 };
 
 typedef struct no no;
 
 class arv_bin {
     public:
-        no* raiz = nullptr;
+    no* raiz = nullptr;
+    
+    void inserir(int valor) {
+        no* node = new no(valor);
 
-        no* criar_no(int valor) {
-            no* node = new no;
-
-            node->esq = nullptr;
-            node->dir = nullptr;
-            node->valor = valor;
-
-            return node;
+        if (!raiz) {
+            raiz = node;
+            return;
         }
-        
-        void inserir(int valor) {
-            no* node = criar_no(valor);
+
+        no* atual = raiz;
+
+        while (true) {
+            if (atual->valor > valor && atual->esq) atual = atual->esq;
+            else if (atual->valor < valor && atual->dir) atual = atual->dir;
+            else break;
+        }
+
+        if (atual->valor > valor) atual->esq = node;
+        else atual->dir = node;
+
+        node->pai = atual;
+    }
+    
+    no* busca(int valor) {
+        no* atual = raiz;
+
+        while (true) {
+            if (atual->valor > valor && atual->esq) atual = atual->esq;
+            else if (atual->valor < valor && atual->dir) atual = atual->dir;
+            else if (atual->valor == valor) return atual;
+            else break;
+        }
+
+        return nullptr;
+    }   
+    
+    void remover(int valor) {
+        no* atual = busca(valor);
+        if (!atual) return;
+
+        no* filho;
+        no* antecessor;
+
+        // 0 filho(s):
+        if (!atual->esq && !atual->dir) {
+            if (atual->pai) {
+                if (atual->pai->esq == atual) atual->pai->esq = nullptr;
+                else atual->pai->dir = nullptr;
+            } 
             
-            if (raiz == nullptr) {
-                raiz = node;
+            else {
+                raiz = nullptr;
             }
 
-            else return insert_recursivo(raiz, node);
+            delete atual;
         }
-        
-        void insert_recursivo(no* raiz, no* novo_no) {
-            if (raiz->valor > novo_no->valor) {
-                if (raiz->esq == nullptr) raiz->esq = novo_no;
-                else insert_recursivo(raiz->esq, novo_no);
+
+        // 1 filho(s):
+        else if (!atual->esq || !atual->dir) {
+            filho = atual->esq ? atual->esq : atual->dir;
+
+            if (!atual->pai) {
+                raiz = filho;
+                filho->pai = nullptr;
+            } 
+            
+            else {
+                if (atual->pai->esq == atual) atual->pai->esq = filho;
+                else atual->pai->dir = filho;
+                filho->pai = atual->pai;
+            }
+
+            delete atual;
+        }
+
+        // 2 filho(s):
+        else {
+            antecessor = atual->esq;
+            while (antecessor->dir) antecessor = antecessor->dir;
+
+            atual->valor = antecessor->valor;
+
+            if (antecessor->esq) antecessor->esq->pai = antecessor->pai;
+
+            if (antecessor->pai->esq == antecessor) antecessor->pai->esq = antecessor->esq;
+            else antecessor->pai->dir = antecessor->esq;
+
+            delete antecessor;
+        }
+    }
+
+    bool pre(no* node, bool primeiro) {
+        if (node != nullptr) {
+            if (primeiro) {
+                cout << node->valor;
+                primeiro = false;
             } else {
-                if (raiz->dir == nullptr) raiz->dir = novo_no;
-                else insert_recursivo(raiz->dir, novo_no);
+                cout << " " << node->valor;
+            }
+
+            primeiro = pre(node->esq, primeiro);
+            primeiro = pre(node->dir, primeiro);
+        }
+
+        return primeiro;
+    }
+
+    bool in(no* node, bool primeiro) {
+        if (node != nullptr) {
+            primeiro = in(node->esq, primeiro);
+            
+            if (primeiro) {
+                cout << node->valor;
+                primeiro = false;
+            } else {
+                cout << " " << node->valor;
+            }
+
+            primeiro = in(node->dir, primeiro);
+        }
+
+        return primeiro;
+    }
+
+    bool pos(no* node, bool primeiro) {
+        if (node != nullptr) {
+            primeiro = pos(node->esq, primeiro);
+            primeiro = pos(node->dir, primeiro);
+            
+            if (primeiro) {
+                cout << node->valor;
+                primeiro = false;
+            } else {
+                cout << " " << node->valor;
             }
         }
 
-        bool pre(no* node, bool primeiro) {
-            if (node != nullptr) {
-                if (primeiro) {
-                    cout << node->valor;
-                    primeiro = false;
-                } else {
-                    cout << " " << node->valor;
-                }
-
-                primeiro = pre(node->esq, primeiro);
-                primeiro = pre(node->dir, primeiro);
-            }
-
-            return primeiro;
-        }
-
-        bool in(no* node, bool primeiro) {
-            if (node != nullptr) {
-                primeiro = in(node->esq, primeiro);
-                
-                if (primeiro) {
-                    cout << node->valor;
-                    primeiro = false;
-                } else {
-                    cout << " " << node->valor;
-                }
-
-                primeiro = in(node->dir, primeiro);
-            }
-
-            return primeiro;
-        }
-
-        bool pos(no* node, bool primeiro) {
-            if (node != nullptr) {
-                primeiro = pos(node->esq, primeiro);
-                primeiro = pos(node->dir, primeiro);
-                
-                if (primeiro) {
-                    cout << node->valor;
-                    primeiro = false;
-                } else {
-                    cout << " " << node->valor;
-                }
-            }
-
-            return primeiro;
-        }
-
-        bool busca(no* node, int valor) {
-            if (node != nullptr) {
-                if (node->valor == valor) {
-                    cout << valor << " existe" << endl;
-                    return true;
-                }
-
-                if (node->valor > valor) {
-                    if (busca(node->esq, valor)) return true;
-                }
-
-                else {
-                    if (busca(node->dir, valor)) return true;
-                }
-            }
-
-            return false;
-        }
+        return primeiro;
+    }
 };
 
 typedef class arv_bin arv_bin;
 
-void remover(no*& raiz, int valor) {
-    if (raiz == nullptr) return;
-
-    if (valor < raiz->valor) {
-        remover(raiz->esq, valor);
-    } else if (valor > raiz->valor) {
-        remover(raiz->dir, valor);
-    } else {
-        if (raiz->esq == nullptr) {
-            no* temp = raiz;
-            raiz = raiz->dir;
-            delete temp;
-        } else if (raiz->dir == nullptr) {
-            no* temp = raiz;
-            raiz = raiz->esq;
-            delete temp;
-        } else {
-            no* temp = raiz->dir;
-            while (temp->esq != nullptr) {
-                temp = temp->esq;
-            }
-            raiz->valor = temp->valor;
-            remover(raiz->dir, temp->valor);
-        }
-    }
-}
-
-void inserir_iterativo(int valor, arv_bin& arv) {
-    no* node = arv.criar_no(valor);
-    if (arv.raiz == nullptr) {
-        arv.raiz = node;
-        return;
-    }
-
-    no* atual = arv.raiz;
-    no* anterior = nullptr;
-
-    while (atual != nullptr) {
-        anterior = atual;
-        if (valor < atual->valor) {
-            atual = atual->esq;
-        } else {
-            atual = atual->dir;
-        }
-    }
-
-    if (valor < anterior->valor) {
-        anterior->esq = node;
-    } else {
-        anterior->dir = node;
-    }
-}
-
-bool busca_iterativa(no* raiz, int valor) {
-    while (raiz != nullptr) {
-        if (raiz->valor == valor) {
-            cout << valor << " existe" << endl;
-            return true;
-        } else if (valor < raiz->valor) {
-            raiz = raiz->esq;
-        } else {
-            raiz = raiz->dir;
-        }
-    }
-    return false;
-}
-
 void inserir_busca(string& linha, int& valor, arv_bin& arv) {
     if (linha == "I") {
-        inserir_iterativo(valor, arv);
+        arv.inserir(valor);
     } 
     
     else if (linha == "P") {
-        if (!busca_iterativa(arv.raiz, valor)) {
+        if (arv.busca(valor)) {
+            cout << valor << " existe" << endl;
+        }
+        
+        else {
             cout << valor << " nao existe" << endl;
         }
-    } else if (linha == "R") {
-        remover(arv.raiz, valor);
+    } 
+    
+    else if (linha == "R") {
+        arv.remover(valor);
     }
 }
 
 void print(string& linha, arv_bin& arv) {
-    bool p;
     if (linha == "INFIXA") {
-        p = arv.in(arv.raiz, true);
+        arv.in(arv.raiz, true);
         cout << endl;
     }
 
     else if (linha == "PREFIXA") {
-        p = arv.pre(arv.raiz, true);
+        arv.pre(arv.raiz, true);
         cout << endl;
     }
 
     else if (linha == "POSFIXA") {
-        p = arv.pos(arv.raiz, true);
+        arv.pos(arv.raiz, true);
         cout << endl;
     }
 }
 
 int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(nullptr);
+
     string linha;
     int valor;
     arv_bin arv;
@@ -228,7 +211,6 @@ int main() {
         } else {
             print(linha, arv);
         }
-        
     }
 
     return 0;
