@@ -9,6 +9,7 @@ int main() {
     cin.tie(nullptr);
 
     int n, x, i, j;
+    long long total_valor, atual_valor;
 
     while (cin >> n) {
         vector<long long> frequencias[64];
@@ -18,8 +19,8 @@ int main() {
             frequencias[x].push_back(-1);
         }
 
-        long long total_valor = 0;
-        long long atual_valor = 1;
+        total_valor = 0;
+        atual_valor = 1;
 
         for (i = 55; i >= 1; i--) {
             for (j = 0; j < frequencias[i].size(); j++) {
