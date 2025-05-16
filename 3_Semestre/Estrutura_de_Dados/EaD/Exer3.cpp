@@ -3,12 +3,13 @@
 using namespace std;
 
 const int N = 23;
+const int VAZIO = -2;
 
 void inserir(int num, int v[]) {
     int index = num%N;
     int i = 0;
 
-    while (v[(index + i*i)%N] != 0 && v[(index + i*i)%N] != -1 && i < N) {
+    while (v[(index + i*i)%N] != VAZIO && v[(index + i*i)%N] != -1 && i < N) {
         i++;
     }
 
@@ -24,7 +25,7 @@ int buscar(int num, int v[]) {
     int index = num%N;
     int i = 0;
 
-    while (v[(index + i*i)%N] != 0 && i < N) {
+    while (v[(index + i*i)%N] != VAZIO && i < N) {
         if (v[(index + i*i)%N] == num) {
             return (index + i*i)%N;;
         }
@@ -45,7 +46,7 @@ void remover(int num, int v[]) {
 
 void printar(int v[]) {
     for (int i = 0; i < N; i++) {
-        if (v[i]) {
+        if (v[i] > 0) {
             cout << "i(" << i << ") = " << v[i] << endl;
         }
     }
@@ -54,6 +55,7 @@ void printar(int v[]) {
 int main() {
     int i, index;
     int v[23] = {0};
+    for (i = 0; i < N; i++) v[i] = VAZIO;
     int entrada[] = {19, 42, 65, 88, 111, 134, 157, 180, 203};
     int busca1[] = {65, 134, 200};
     int busca2[] = {134, 157};
@@ -119,5 +121,4 @@ int main() {
 //i(14) = 203
 //i(19) = 19
 //i(20) = 42
-//i(21) = -1
 //i(22) = 180

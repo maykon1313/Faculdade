@@ -3,12 +3,13 @@
 using namespace std;
 
 const int N = 23;
+const int VAZIO = -2;
 
 void inserir(int num, int v[]) {
     int index = num%N;
     int comeco = index;
 
-    while (v[index] != 0) {
+    while (v[index] != VAZIO && v[index] != -1) {
         index = (index + 1) % N;
         if (index == comeco) {
             cout << "Vetor cheio." << endl;
@@ -23,12 +24,11 @@ int buscar(int num, int v[]) {
     int index = num%N;
     int comeco = index;
 
-    while (v[index] != 0) {
+    while (v[index] != VAZIO) {
         if (v[index] == num) {
             return index;
         } else {
             index = (index + 1)%N;
-
             if (index == comeco) break;
         }
     }
@@ -40,7 +40,7 @@ void remover(int num, int v[]) {
     int index = buscar(num, v);
     int comeco = index;
 
-    while (v[index] != 0) {
+    while (v[index] != VAZIO) {
         if (v[index] == num) {
             v[index] = -1;
             return;
@@ -53,7 +53,7 @@ void remover(int num, int v[]) {
 
 void printar(int v[]) {
     for (int i = 0; i < N; i++) {
-        if (v[i]) {
+        if (v[i] > VAZIO) {
             cout << "i(" << i << ") = " << v[i] << endl;
         }
     }
@@ -61,7 +61,8 @@ void printar(int v[]) {
 
 int main() {
     int i, index;
-    int v[23] = {0};
+    int v[23];
+    for (int i = 0; i < N; i++) v[i] = VAZIO;
     int entrada[] = {19, 42, 65, 88, 111, 134, 157, 180, 203};
     int busca1[] = {65, 134, 200};
     int busca2[] = {134, 157};
@@ -121,7 +122,6 @@ int main() {
 //O número 157 está no index: 2
 
 //i(0) = 111
-//i(1) = -1
 //i(2) = 157
 //i(3) = 180
 //i(4) = 203
