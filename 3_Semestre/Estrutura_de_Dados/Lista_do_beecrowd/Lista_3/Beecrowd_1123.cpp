@@ -1,12 +1,55 @@
 #include <iostream>
 #include <vector>
+#include <queue>
+#include <algorithm>
 
 using namespace std;
 
-int menor_caminho(vector<vector<int>>& matriz, int C, int K) {
-    return 0;
-}
+const int INF = 0x3f3f3f3f;
 
+int dijkstra_corrigido(int N, const vector<vector<int>>& matriz, int C, int K) {
+    int destino_final = C - 1;
+    int d, u, v, p;
+    vector<int> dist(N, INF);
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
+
+    dist[K] = 0;
+    pq.push({0, K});
+
+    while (!pq.empty()) {
+        d = pq.top().first;
+        u = pq.top().second;
+        pq.pop();
+
+        if (d > dist[u]) continue;
+
+        if (u >= 0 && u < destino_final) {
+            v = u + 1;
+
+            if (matriz[u][v] != -1) {
+                p = matriz[u][v];
+                if (dist[u] != INF && dist[u] + p < dist[v]) {
+                    dist[v] = dist[u] + p;
+                    pq.push({dist[v], v});
+                }
+            }
+        }
+        
+        else {
+            for (v = 0; v < N; ++v) {
+                if (matriz[u][v] != -1) {
+                    p = matriz[u][v];
+                    if (dist[u] != INF && dist[u] + p < dist[v]) {
+                        dist[v] = dist[u] + p;
+                        pq.push({dist[v], v});
+                    }
+                }
+            }
+        }
+    }
+
+    return dist[destino_final];
+}
 
 int main() {
     ios_base::sync_with_stdio(false);
@@ -14,60 +57,22 @@ int main() {
 
     int N, M, C, K;
     int U, V, P;
-    int i, j;
-    int pedagio = 0;
 
     while (cin >> N >> M >> C >> K) {
-        if (N == 0) break;
+        if (!N) break;
 
         vector<vector<int>> matriz(N, vector<int>(N, -1));
 
-
-        for (i = 0; i < M; i++) {
+        for (int i = 0; i < M; i++) {
             cin >> U >> V >> P;
-            matriz[U][V] = P;
-            matriz[V][U] = P;
+            if (U >= 0 && U < N && V >= 0 && V < N) {
+                matriz[U][V] = P;
+                matriz[V][U] = P;
+            }
         }
 
-        pedagio = menor_caminho(matriz, C, K);
-
-        cout << pedagio << '\n';
+        cout << dijkstra_corrigido(N, matriz, C, K) << '\n';
     }
 
     return 0;
 }
-
-//vector<int> rota;
-//for (i = 0; i < C; i++) rota.push_back(i);
-
-
-
-
-6 7 2 5
-
-5 2 1
-2 1 10
-1 0 1
-3 0 2
-3 4 2
-3 5 3
-5 4 2
-
-
-5 2 1
-5 3 3
-5 4 2
-
-2 1 10
-
-3 0 2
-3 4 2
-
-4 3 2
-
-0 1 1
-
-
-5 3 3
-3 0 2
-0 1 1
