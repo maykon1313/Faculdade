@@ -1,53 +1,52 @@
 #include <iostream>
+#include <numeric>
+#include <algorithm>
 
 using namespace std;
 
-int gcd(long long int X,long long int Y) {
-    while (true) {
-        if (X == Y) return X;
-        else if (X > Y) X = X-Y;
-        else Y = Y-X;
+long long get_smallest_prime_factor(long long n) {
+    if (n % 2 == 0) return 2;
+    for (long long i = 3; i * i <= n; i += 2) {
+        if (n % i == 0) return i;
     }
+    return n;
 }
 
 int main() {
     ios_base::sync_with_stdio(false);
-    cin.tie(nullptr);
+    cin.tie(NULL);
 
-    long long int Y, K, x = 2, aux = 1, mdc = 1;
+    long long y_charge, k_processes;
+    cin >> y_charge >> k_processes;
 
-    cin >> Y >> K;
+    long long current_x = 1;
 
-    for (long long int i = 2; i <= 9; i++) {
-        if (Y%i == 0) mdc = max(mdc, i);
-    }
-    
-    for (long long int i = 1; i < K; i++) {
-        if (x >= Y) {
-            cout << x << ' ' << Y << " gcd = " << Y <<'\n';
-            x += Y;
+    while (k_processes > 0) {
+        long long common_divisor = gcd(current_x, y_charge);
+
+        if (common_divisor == y_charge) {
+            current_x += k_processes * y_charge;
+            k_processes = 0;
+        } else {
+            long long y_div_g = y_charge / common_divisor;
+            long long x_div_g = current_x / common_divisor;
+
+            long long psf_y_div_g = get_smallest_prime_factor(y_div_g);
+            
+            long long remainder_x_mod_psf = x_div_g % psf_y_div_g;
+            long long steps_with_stable_gcd = psf_y_div_g - remainder_x_mod_psf;
+
+            if (k_processes <= steps_with_stable_gcd) {
+                current_x += k_processes * common_divisor;
+                k_processes = 0;
+            } else {
+                current_x += steps_with_stable_gcd * common_divisor;
+                k_processes -= steps_with_stable_gcd;
+            }
         }
-
-        else {
-            if (aux < mdc) aux = gcd(x,Y);
-            else aux = mdc;
-
-            cout << x << ' ' << Y << " gcd = " << aux <<'\n';
-            x += aux;
-        }
     }
 
-    cout << x << '\n';
+    cout << current_x << endl;
 
     return 0;
 }
-
-/*
- 1 123 1
- 2 123 1
- 3 123 3
- 6 123 3
- 9 123 3
-12 123 3
-15 123 
-*/
