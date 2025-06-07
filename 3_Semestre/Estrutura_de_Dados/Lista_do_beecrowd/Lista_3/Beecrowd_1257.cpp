@@ -1,7 +1,10 @@
 #include <iostream>
 #include <string>
+
 using namespace std;
+
 string alfabeto = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
 int main() {
     ios_base::sync_with_stdio(false);
     cin.tie(nullptr);
