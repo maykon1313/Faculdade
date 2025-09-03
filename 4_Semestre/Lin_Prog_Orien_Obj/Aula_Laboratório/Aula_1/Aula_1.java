@@ -1,4 +1,4 @@
-package Aula_Laboratório;
+package Aula_Laboratório.Aula_1;
 
 class Dog {
     int peso;
