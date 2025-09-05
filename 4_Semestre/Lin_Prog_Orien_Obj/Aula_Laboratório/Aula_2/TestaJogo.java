@@ -1,4 +1,4 @@
-package Aula_Laboratório.Aula_2;
+package Aula_2;
 
 class Jogador{
     private String nome;
