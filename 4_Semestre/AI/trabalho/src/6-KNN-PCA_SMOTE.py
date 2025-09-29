@@ -1,11 +1,13 @@
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score, classification_report
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.decomposition import PCA
+from imblearn.over_sampling import SMOTE
 from sentence_transformers import SentenceTransformer
 
 def load():
-# Carregar os embeddings e labels salvos
+    # Carregar os embeddings e labels salvos
     data = np.load('data/feiticos_embeddings.npz')
 
     train_embeddings = data['train_embeddings']
@@ -16,14 +18,34 @@ def load():
     validation_label = data['validation_label']
     test_label = data['test_label']
 
-    # Normalizar os dados para melhorar a performance do KNN
-    scaler = StandardScaler()
+    # Codificar labels para numéricos (PCA - SMOTE)
+    label_encoder = LabelEncoder()
+    train_label_encoded = label_encoder.fit_transform(train_label)
+    validation_label_encoded = label_encoder.transform(validation_label)
+    test_label_encoded = label_encoder.transform(test_label)
 
+    # Normalizar os dados
+    scaler = StandardScaler()
     train_embeddings_scaled = scaler.fit_transform(train_embeddings)
     validation_embeddings_scaled = scaler.transform(validation_embeddings)
     test_embeddings_scaled = scaler.transform(test_embeddings)
 
-    return train_label, validation_label, test_label, train_embeddings_scaled, validation_embeddings_scaled, test_embeddings_scaled, scaler
+    # Aplicar SMOTE para balancear as classes no conjunto de treino
+    smote = SMOTE(random_state=42)
+    smote_result = smote.fit_resample(train_embeddings_scaled, train_label_encoded)
+    if len(smote_result) == 2:
+        train_embeddings_balanced, train_label_balanced = smote_result
+    else:
+        train_embeddings_balanced, train_label_balanced, _ = smote_result
+
+    # Aplicar PCA para redução de dimensionalidade (manter 95% da variância)
+    pca = PCA(n_components=0.95, random_state=42)
+    train_embeddings_balanced = np.asarray(train_embeddings_balanced)
+    train_embeddings_pca = pca.fit_transform(train_embeddings_balanced)
+    validation_embeddings_pca = pca.transform(validation_embeddings_scaled)
+    test_embeddings_pca = pca.transform(test_embeddings_scaled)
+
+    return train_label_balanced, validation_label_encoded, test_label_encoded, train_embeddings_pca, validation_embeddings_pca, test_embeddings_pca, scaler, pca, label_encoder
 
 def train():
     # Valores de K e métricas de distância
@@ -35,7 +57,7 @@ def train():
     best_metric = 'euclidean'
     best_accuracy = 0
 
-    train_label, validation_label, test_label, train_embeddings_scaled, validation_embeddings_scaled, test_embeddings_scaled, scaler = load()
+    train_label, validation_label, test_label, train_embeddings_scaled, validation_embeddings_scaled, test_embeddings_scaled, scaler, pca, label_encoder = load()
 
     # Criar e treinar o modelo KNN
     for k in k_values:
@@ -70,11 +92,11 @@ def train():
     else:
         print("Erro: Nenhum modelo foi treinado com sucesso.")
 
-    return best_k, best_model, best_metric, scaler
+    return best_k, best_model, best_metric, scaler, pca, label_encoder
 
 def main():
     print("treinando...")
-    best_k, best_model, best_metric, scaler = train()
+    best_k, best_model, best_metric, scaler, pca, label_encoder = train()
     
     while True:
         print("Deseja testar para um input personalizado? (s/n)")
@@ -97,15 +119,19 @@ def main():
 
             sen_embed_scaled = scaler.transform([sen_embed])
 
-            prediction = best_model.predict(sen_embed_scaled)
+            sen_embed_pca = pca.transform(sen_embed_scaled)
+
+            prediction = best_model.predict(sen_embed_pca)
+
+            prediction_decoded = label_encoder.inverse_transform(prediction)
 
             print(f"Usando K = {best_k} e Metrica = {best_metric}.")
 
-            if prediction[0] == school:
-                print(f"O modelo corretamente acertou a escola: {prediction[0]}.")
+            if prediction_decoded[0] == school:
+                print(f"O modelo corretamente acertou a escola: {prediction_decoded[0]}.")
             
             else:
-                print(f"O modelo não acertou a escola: {prediction[0]}.")
+                print(f"O modelo não acertou a escola: {prediction_decoded[0]}.")
 
         else:
             print("Erro ao carregar o modelo ou input.")

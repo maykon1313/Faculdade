@@ -1,5 +1,5 @@
 import numpy as np
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.preprocessing import StandardScaler
 from sentence_transformers import SentenceTransformer
@@ -26,41 +26,36 @@ def load():
     return train_label, validation_label, test_label, train_embeddings_scaled, validation_embeddings_scaled, test_embeddings_scaled, scaler
 
 def train():
-    # Valores de K e métricas de distância
-    k_values = list(range(1, 31)) 
-    metrics = ['euclidean', 'manhattan', 'cosine', 'minkowski', 'hamming']
+    c_values = [0.1, 1, 10, 100]
+    gamma_values = [0.001, 0.01, 0.1, 1]
 
-    best_k = 1
+    best_c = 0.1
+    best_gamma = 0.001
     best_model = None
-    best_metric = 'euclidean'
     best_accuracy = 0
 
     train_label, validation_label, test_label, train_embeddings_scaled, validation_embeddings_scaled, test_embeddings_scaled, scaler = load()
 
-    # Criar e treinar o modelo KNN
-    for k in k_values:
-        # Testar diferentes métricas de distância
-        for metric in metrics:
-            knn = KNeighborsClassifier(n_neighbors=k, metric=metric, weights='distance')
-            knn.fit(train_embeddings_scaled, train_label)
+    for c in c_values:
+        for g in gamma_values:
+            model = SVC(C=c, gamma=g, kernel='rbf')
+            model.fit(train_embeddings_scaled, train_label)
 
-            # Fazer previsões no conjunto de validação
-            val_predictions = knn.predict(validation_embeddings_scaled)
-            val_accuracy = accuracy_score(validation_label, val_predictions)
-            print(f"K: {k}, Métrica: {metric}, Acurácia: {val_accuracy:.4f}")
-            
+            val_accuracy = model.score(validation_embeddings_scaled, validation_label)
+
+            print(f"C: {c}, Gamma: {g}, Acurácia: {val_accuracy:.4f}")
+                
             if val_accuracy > best_accuracy:
-                best_k = k
-                best_model = knn
-                best_metric = metric
+                best_c = c
+                best_gamma = g
+                best_model = model
                 best_accuracy = val_accuracy
 
     if best_model is not None:
         # Fazer previsões no conjunto de teste
         test_predictions = best_model.predict(test_embeddings_scaled)
         test_accuracy = accuracy_score(test_label, test_predictions)
-        print(f"\nMelhor valor de K: {best_k}")
-        print(f"Melhor métrica: {best_metric}")
+        print(f"\nMelhor valor de C: {best_c}")
         print(f"Acurácia de validação: {best_accuracy:.4f}")
         print(f"Acurácia no teste: {test_accuracy:.4f}")
 
@@ -70,11 +65,11 @@ def train():
     else:
         print("Erro: Nenhum modelo foi treinado com sucesso.")
 
-    return best_k, best_model, best_metric, scaler
+    return best_c, best_gamma, best_model, scaler
 
 def main():
     print("treinando...")
-    best_k, best_model, best_metric, scaler = train()
+    best_c, best_gamma, best_model, scaler = train()
     
     while True:
         print("Deseja testar para um input personalizado? (s/n)")
@@ -99,7 +94,7 @@ def main():
 
             prediction = best_model.predict(sen_embed_scaled)
 
-            print(f"Usando K = {best_k} e Metrica = {best_metric}.")
+            print(f"Usando C = {best_c}, Gamma: {best_gamma}.")
 
             if prediction[0] == school:
                 print(f"O modelo corretamente acertou a escola: {prediction[0]}.")
