@@ -6,7 +6,7 @@
 # Hold out com repetição: artificialmente aumenta o treino da IA.
 
 # Validação cruzada (Cross validation): particiona a amostra em K-partições, separa uma das partições e treina com o resto, em seguida, 
-# pega o segundo Hold, separa e treina novamente, sempre avalidando a performace com o Hold separado, até o fim das partições. 
+# pega o segundo Hold, separa e treina novamente, sempre avaliando a performasse com o Hold separado, até o fim das partições. 
 # Idealmente, na extratificada, é mantido a proporção do caso real para cada partição.
 
 # Leave one out: Deixa um exemplo de fora e testa com o resto para treino, muito custoso, mas muito eficiente.
