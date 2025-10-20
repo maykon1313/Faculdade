@@ -1,6 +1,0 @@
-requests
-beautifulsoup4
-pandas
-scikit-learn
-sentence-transformers
-imbalanced-learn
