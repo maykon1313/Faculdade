@@ -1,4 +1,4 @@
-package Aula_6_Revisao_P1;
+package Aula_7_P1;
 
 interface FormaGeometrica {
     public abstract boolean pertence(Coordenada2D ponto);

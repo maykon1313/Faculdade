@@ -1,4 +1,4 @@
-package P1_a;
+package P1;
 
 class Coordenada2D {
     double x, y;

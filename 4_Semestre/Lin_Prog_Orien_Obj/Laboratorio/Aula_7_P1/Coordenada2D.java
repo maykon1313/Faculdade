@@ -1,4 +1,4 @@
-package Aula_6_Revisao_P1;
+package Aula_7_P1;
 
 public class Coordenada2D {
     private double x, y;
