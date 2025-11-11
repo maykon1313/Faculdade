@@ -1,0 +1,8 @@
+num_classes = 3
+num_categories = 3
+DROP = 0.3
+LR = 2e-5
+WD = 0
+BATCH = 16
+EPOCHS = 10
+Early_stop = 4
