@@ -74,8 +74,6 @@ data/
 │   └── valid_tokenized.csv
 ├── interim/
 │   └── dataset.csv
-├── new/
-│   └── avaliacao.txt
 └── raw/
     └── oncas_comentarios.csv # (Baixado da planilha do Google Spread Sheets)
 env/

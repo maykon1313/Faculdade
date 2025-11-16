@@ -20,18 +20,21 @@ print(f"Avaliação será salva em: {out_file}")
 sys.stdout = open(out_file, 'w', encoding='utf-8')
 
 class BertClassifier(nn.Module):
-    def __init__(self, num_classes, dropout=0.3, hidden_dim=256, use_hidden=True):
+    def __init__(self, num_classes, dropout=0.3, hidden_dim=256, use_hidden=False):
         super(BertClassifier, self).__init__()
         self.bert = BertModel.from_pretrained('neuralmind/bert-base-portuguese-cased')
         self.dropout = nn.Dropout(dropout)
         self.use_hidden = use_hidden
 
-        self.classifier = nn.Sequential(
-            nn.Linear(self.bert.config.hidden_size, hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_dim, num_classes)
-        )
+        if self.use_hidden:
+            self.classifier = nn.Sequential(
+                nn.Linear(self.bert.config.hidden_size, hidden_dim),
+                nn.ReLU(),
+                nn.Dropout(dropout),
+                nn.Linear(hidden_dim, num_classes)
+            )
+        else:
+            self.classifier = nn.Linear(self.bert.config.hidden_size, num_classes)
         
 
     def forward(self, input_ids, attention_mask):
