@@ -22,7 +22,6 @@ PATIENCE = 5
 SEED = 42
 CLIP_NORM = 1.0
 
-# New hyperparams / behavior
 FREEZE_EPOCHS = 1      # número de épocas para treinar apenas a cabeça (BERT congelado)
 HIDDEN_DIM = 256       # dimensão da camada oculta na cabeça de classificação
 USE_HIDDEN = True      # usar camada oculta (Linear -> ReLU -> Dropout -> Linear)
