@@ -1,7 +1,0 @@
-num_classes = 3
-num_categories = 3
-DROP = 0.3
-LR = 1e-6
-WD = 0
-BATCH = 128
-EPOCHS = 40
