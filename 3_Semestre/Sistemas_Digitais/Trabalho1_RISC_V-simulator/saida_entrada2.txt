@@ -1,0 +1,8 @@
+Estado dos registradores:
+t1 = 5
+t2 = 7
+t3 = 12
+t4 = 268435456
+
+Estado da memória:
+mem(268435456) = 12

@@ -1,0 +1,5 @@
+addi t1, zero, 10      # t1 = 10
+addi t2, zero, 20      # t2 = 20
+add  t3, t1, t2        # t3 = t1 + t2 = 30
+lui  t4, 0x10000       # t4 = 0x10000000 = 268435456
+sw   t3, 0(t4)         # memória[268435456] = 30
