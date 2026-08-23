@@ -1,0 +1,5 @@
+librosa     # Excelente para carregar áudio e fazer downsampling
+numpy       # Para manipulação de matrizes e cálculo do histograma
+scipy  	    # Sigmnal: Para gerar o espectrograma (STFT) de forma rápida. Ndimage: Filtro de máximo local para achar os picos
+matplotlib  # Para gerar todos os gráficos explicativos
+PyWavelets  # Wavelets para o escalograma
