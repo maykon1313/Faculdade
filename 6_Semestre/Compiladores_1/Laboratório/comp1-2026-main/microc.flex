@@ -55,13 +55,13 @@ typedef enum {
  * imprimir o tipo de cada token de forma legivel. Mantenha esta lista
  * na MESMA ORDEM do enum TokenType. */
 static const char *nome_token[] = {
-    "UNDEF", "ID", "END_OF_FILE",
-    "INTEGERCONST", "CHARCONST", "STRINGCONST",
-    "PLUS", "MINUS", "MUL", "DIV", "MOD",
-    "EQ", "NEQ", "LT", "GT", "LEQ", "GEQ", "AND", "OR", "NOT",
-    "ASSIGN", "SEMICOLON", "COMMA", "LPAREN", "RPAREN",
-    "LBRACE", "RBRACE", "LBRACKET", "RBRACKET",
-    "MAIN", "IF", "ELSE", "FOR", "RETURN", "INT", "CHAR", "PRINT"
+    "TK_ERRO", "TK_ID", "TK_EOF",
+    "TK_NUM", "TK_CHAR", "TK_STRING",
+    "TK_PLUS", "TK_MINUS", "TK_TIMES", "TK_DIV", "TK_MOD",
+    "TK_EQ", "TK_NEQ", "TK_LT", "TK_GT", "TK_LEQ", "TK_GEQ", "TK_AND", "TK_OR", "TK_NOT",
+    "TK_ASSIGN", "TK_SEMI", "TK_COMMA", "TK_LPAREN", "TK_RPAREN",
+    "TK_LBRACE", "TK_RBRACE", "TK_LBRACKET", "TK_RBRACKET",
+    "TK_MAIN", "TK_IF", "TK_ELSE", "TK_FOR", "TK_RETURN", "TK_INT", "TK_CHAR", "TK_PRINT"
 };
 
 /* Valor semantico do token corrente. */
@@ -76,12 +76,21 @@ YYSTYPE microc_yylval;
  * toda vez que uma quebra de linha for consumida pelo scanner (seja em
  * codigo "normal", dentro de comentarios ou dentro de strings). */
 int linha_atual = 1;
-int coluna_atual = 0;
+int coluna_atual = 1;
+
+/* YY_USER_ACTION: manter coluna_atual sincronizada com o texto realmente consumido (yyleng). */
+#define YY_USER_ACTION coluna_atual += yyleng;
 
 /* Funcao auxiliar para preencher microc_yylval.symbol com uma copia do
  * texto reconhecido (yytext). Sinta-se livre para usar/adaptar. */
 static void guarda_lexema(void) {
     microc_yylval.symbol = strdup(yytext);
+}
+
+static void erro_lexico(const char *msg) {
+    int coluna_inicio = coluna_atual - (int) strlen(yytext);
+    microc_yylval.error_msg = strdup(msg);
+    fprintf(stderr, "ERRO LEXICO (linha %d, coluna %d): %s -> '%s'\n", linha_atual, coluna_inicio, msg, yytext);
 }
 
 %}
@@ -107,10 +116,15 @@ ALFANUM     [a-zA-Z0-9_]
   * do flex), pois o token UNDEF tambem vale 0 no enum TokenType -- se
   * dependessemos do comportamento padrao, um erro lexico seria
   * confundido com o fim do arquivo pelo main() de teste abaixo. */
-<<EOF>>             { return END_OF_FILE; }
+<INITIAL><<EOF>>    { return END_OF_FILE; }
 
  /* --- Espacos em branco e quebras de linha ---------------------------- */
-\n                  { linha_atual++; }
+\n                  {
+                        printf("\n");
+                        linha_atual++; 
+                        coluna_atual = 1;
+                    }
+
 [ \t\r]+            { /* ignora espacos em branco */ }
 
  /* --- Comentarios ------------------------------------------------------
@@ -120,7 +134,10 @@ ALFANUM     [a-zA-Z0-9_]
 
 "/*"                { BEGIN(COMMENT); }
 <COMMENT>"*/"       { BEGIN(INITIAL); }
-<COMMENT>\n         { linha_atual++; }
+<COMMENT>\n         { 
+                        linha_atual++; 
+                        coluna_atual = 1; 
+                    }
 <COMMENT><<EOF>>    {
                         microc_yylval.error_msg = "EOF em comentario";
                         return UNDEF;
@@ -145,6 +162,20 @@ ALFANUM     [a-zA-Z0-9_]
                         /* TODO(aluno): reconhecer palavras reservadas aqui */
                         guarda_lexema();
                         return ID;
+                    }
+
+ /* --- Caso de borda: numero colado a letra, ex. "123abc" -----------------
+  * Decisao de projeto: tratamos digito(s)
+  * seguido imediatamente de letra/underscore, sem separador, como ERRO
+  * LEXICO em vez de devolver dois tokens (TK_NUM "123" + TK_ID "abc").
+  * Motivo: nenhuma linguagem no estilo C aceita identificador iniciado
+  * por digito, entao produzir dois tokens "validos" mascararia um erro
+  * de digitacao comum. Esta regra precisa vir ANTES da regra de numero
+  * puro, pois o flex prefere o casamento mais longo, mas em caso de
+  * empate de tamanho escolhe a regra que aparece primeiro no arquivo. */
+{DIGIT}+{LETRA}{ALFANUM}*   {
+                        erro_lexico("numero mal formado (digito seguido de letra sem separador)");
+                        return UNDEF;
                     }
 
  /* --- Constantes inteiras -----------------------------------------------
@@ -215,7 +246,7 @@ ALFANUM     [a-zA-Z0-9_]
   * Casa com qualquer caractere que nao tenha correspondido a nenhuma
   * regra anterior. Deve ser SEMPRE a ultima regra do arquivo. */
 .                   {
-                        microc_yylval.error_msg = strdup(yytext);
+                        erro_lexico("caractere nao reconhecido");
                         return UNDEF;
                     }
 
@@ -253,21 +284,10 @@ int main(int argc, char **argv) {
 
     int tipo;
     while ((tipo = yylex()) != END_OF_FILE) {
-        coluna_atual++;
-        if (tipo == UNDEF) {
-            fprintf(stderr, "ERRO LEXICO (linha %d, coluna %d): %s\n", linha_atual, coluna_atual, microc_yylval.error_msg);
-            continue;
-        }
-
-        printf("(%s,'%s')", nome_token[tipo], yytext);
-
-        if (nome_token[tipo] == "SEMICOLON") {
-            coluna_atual = 0;
-            printf("\n");
-        }
+        if (tipo == UNDEF) continue;
+        printf("(%s,%s) ", nome_token[tipo], yytext);
     }
-
-    printf("(TK_EOF,)\n");
+    printf("(%s,)\n", nome_token[END_OF_FILE]);
 
     fclose(arquivo_fonte);
     return 0;
