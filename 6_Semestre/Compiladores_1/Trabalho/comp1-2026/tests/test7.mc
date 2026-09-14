@@ -1,0 +1,1 @@
+x = 10 // comentário seguida de y = 20;
