@@ -1,0 +1,35 @@
+Executando: tests\test1.mc
+(TK_ID,'soma')(TK_ASSIGN,'=')(TK_ID,'a')(TK_PLUS,'+')(TK_ID,'b')(TK_TIMES,'*')(TK_NUM,'2')(TK_SEMI,';')
+(TK_ID,'sub')(TK_ASSIGN,'=')(TK_ID,'a')(TK_MINUS,'-')(TK_ID,'b')(TK_SEMI,';')
+(TK_ID,'div')(TK_ASSIGN,'=')(TK_ID,'a')(TK_PLUS,'+')(TK_ID,'b')(TK_DIV,'/')(TK_NUM,'2')(TK_SEMI,';')(TK_EOF,)
+------------------------------
+
+Executando: tests\test2.mc
+(TK_ID,'x')(TK_ASSIGN,'=')(TK_NUM,'10')(TK_SEMI,';')
+(TK_ID,'y')(TK_ASSIGN,'=')(TK_NUM,'20')(TK_SEMI,';')(TK_EOF,)
+------------------------------
+
+Executando: tests\test3.mc
+(TK_EOF,)
+------------------------------
+
+Executando: tests\test4.mc
+
+
+(TK_EOF,)
+------------------------------
+
+Executando: tests\test5.mc
+ERRO LEXICO (linha 1, coluna 1): numero mal formado (digito seguido de letra sem separador) -> '123abc'
+(TK_ASSIGN,'=')(TK_NUM,'12')(TK_SEMI,';')(TK_EOF,)
+------------------------------
+
+Executando: tests\test6.mc
+(TK_ID,'x')(TK_ASSIGN,'=')(TK_NUM,'10')ERRO LEXICO (linha 1, coluna 8): caractere nao reconhecido -> '@'
+ERRO LEXICO (linha 1, coluna 10): caractere nao reconhecido -> '#'
+(TK_ID,'y')(TK_SEMI,';')(TK_EOF,)
+------------------------------
+
+Executando: tests\test7.mc
+(TK_ID,'x')(TK_ASSIGN,'=')(TK_NUM,'10')(TK_EOF,)
+------------------------------
