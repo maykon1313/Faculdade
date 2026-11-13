@@ -1,0 +1,9 @@
+\section{Conclusão}
+
+Foram montadas e ensaiadas em \textit{protoboard} as etapas de uma fonte linear regulada de $12\,\text{V}$ DC (transformador de $12\,\text{V}+12\,\text{V}$, retificador de onda completa, filtro capacitivo de $4700\,\mu\text{F}$ e regulador LM7812). Os objetivos do trabalho foram cumpridos dentro dos limites descritos a seguir.
+
+Os resultados validados são: tensão filtrada de $17{,}96\,\text{V}$ no pino~1 do regulador, com \textit{ripple} em dente de serra de $120\,\text{Hz}$ que cresce com a carga; saída de $11{,}95\,\text{V}$, desvio de $-0{,}42\%$ em relação a $12\,\text{V}$ e dentro da faixa de $\pm 4\%$ do \textit{datasheet}; \textit{ripple} de saída abaixo do limite de leitura, sem o dente de serra visto na entrada; e corrente de $0{,}12\,\text{A}$ sobre o resistor de $100\,\Omega$, compatível com a lei de Ohm dentro da tolerância do resistor.
+
+As limitações são: a corrente máxima ensaiada foi de $0{,}12\,\text{A}$, e a operação em $1\,\text{A}$ foi apenas analisada teoricamente; a atenuação configurada no osciloscópio foi inconsistente entre as capturas, e a amplitude absoluta do \textit{ripple} não está validada; o multímetro foi utilizado na função DC no Experimento~1; e o Experimento~5 não tem poder discriminativo para a regulação de carga.
+
+Como melhorias, recomendam-se dissipador no regulador, fusível de retardo de $250\,\text{V}$ CA, resistor de potência nominal $\geq 2\,\text{W}$ para o ensaio de corrente, ensaio a $1\,\text{A}$, transferência para placa de circuito impresso em caixa e medição do \textit{ripple} com ponta e canal padronizados e sem filtros.

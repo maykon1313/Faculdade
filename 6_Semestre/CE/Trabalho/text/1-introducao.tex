@@ -1,0 +1,58 @@
+\section{Introdução}
+
+\IEEEPARstart{A}{s} fontes de alimentação lineares desempenham um papel fundamental na eletrônica analógica e digital, sendo responsáveis por converter a tensão alternada (AC) proveniente da rede elétrica comercial em uma tensão contínua (DC) estável e regulada, adequada para alimentar circuitos eletrônicos sensíveis. Em aplicações laboratoriais e de bancada, a estabilidade do nível DC de saída, a imunidade a variações da rede elétrica e a minimização da ondulação residual (\textit{ripple}) são parâmetros críticos para garantir a integridade dos sinais e a confiabilidade dos dispositivos alimentados.
+
+Este relatório descreve o projeto, o dimensionamento teórico, a implementação em \textit{protoboard} e a verificação experimental de uma fonte de alimentação linear regulada de $12\,\text{V}$ DC com capacidade nominal de até $1\,\text{A}$, desenvolvida como Trabalho Prático da disciplina de Circuitos Eletrônicos na Faculdade de Computação (FACOM) da Universidade Federal de Mato Grosso do Sul (UFMS). Ao longo das seções seguintes, detalham-se o embasamento teórico de cada bloco funcional, a arquitetura montada em laboratório com levantamento de componentes e custos, bem como a análise quantitativa das formas de onda e grandezas medidas em seis ensaios experimentais progressivos.
+
+\subsection{Princípio de Funcionamento e Dimensionamento Teórico}
+
+O funcionamento de uma fonte de alimentação linear regulada baseia-se em quatro estágios principais encadeados --- transformação, retificação, filtragem e regulação --- complementados por dispositivos de acionamento e proteção elétrica.
+
+\subsubsection{Estágio de Transformação}
+O primeiro estágio utiliza um transformador abaixador com tomada central (\textit{center-tap}), descrito como ``$12\,\text{V}+12\,\text{V}$, $1\,\text{A}$''. O enrolamento primário bivolt ($127\,\text{V}/220\,\text{V}$) é conectado à rede elétrica de $127\,\text{V}$ RMS ($60\,\text{Hz}$), e o secundário fornece tensão nominal simétrica de $12\,\text{V} + 12\,\text{V}$ AC com corrente nominal de $1\,\text{A}$, além de garantir isolação galvânica em relação à rede. A potência aparente (VA) do transformador não foi informada e, por isso, não é utilizada neste relatório. Para uma forma de onda senoidal ideal de valor eficaz $V_{\text{RMS}}$, a amplitude de pico $V_p$ é dada por:
+\begin{equation}
+V_p = V_{\text{RMS}}\sqrt{2}.
+\label{eq:vpico}
+\end{equation}
+Para o valor nominal de $12\,\text{V}$ RMS, obtém-se $V_p \approx 16{,}97\,\text{V}$. Transformadores de baixa potência costumam apresentar tensão em vazio superior à nominal; neste trabalho, a tensão em vazio foi obtida por medição (Seção~\ref{sec:analise}, Experimento~1).
+
+\subsubsection{Estágio de Retificação}
+A tensão alternada do secundário é aplicada a um retificador de onda completa com derivação central composto por dois diodos de silício 1N4007. Com o fio central aterrado como referência de $0\,\text{V}$ (GND), cada diodo conduz em um dos semiciclos da rede, direcionando ambos os semiciclos com polaridade positiva para a carga. Em comparação à ponte retificadora de quatro diodos, essa topologia provoca a queda de apenas uma junção PN ($V_D \approx 0{,}7\,\text{V}$) por semiciclo:
+\begin{equation}
+V_{p,\text{ret}} = V_p - V_D.
+\label{eq:vpret}
+\end{equation}
+Como ambos os semiciclos são aproveitados, a frequência da tensão pulsante dobra em relação à rede elétrica ($f_{\text{ret}} = 2f_{\text{rede}} = 120\,\text{Hz}$, período $T_{\text{ret}} = 8{,}33\,\text{ms}$). Sem filtro capacitivo, o valor médio (DC) dessa onda retificada ideal de pico $V_{p,\text{ret}}$ é:
+\begin{equation}
+V_{\text{DC,sem filtro}} = \frac{2 V_{p,\text{ret}}}{\pi}.
+\label{eq:vdc_sem_filtro}
+\end{equation}
+Nessa topologia, o diodo em corte fica sujeito a uma tensão reversa de cerca de duas vezes o pico do secundário. Com o pico em vazio medido de $19{,}1\,\text{V}$, a tensão reversa de pico (PIV) estimada é $\text{PIV} \approx 2V_p \approx 38\,\text{V}$, muito abaixo da tensão reversa repetitiva máxima de $1000\,\text{V}$ do 1N4007 (\textit{datasheet}~\cite{ds_1n4007}).
+
+\subsubsection{Estágio de Filtragem Capacitiva}
+Para converter a tensão pulsante em um nível contínuo elevado, conecta-se em paralelo à saída dos diodos um capacitor eletrolítico de alta capacitância ($C = 4700\,\mu\text{F} / 25\,\text{V}$). O capacitor carrega-se rapidamente próximo ao pico $V_{p,\text{ret}}$ e mantém a alimentação do circuito enquanto os diodos permanecem reversamente polarizados, descarregando-se até o pico seguinte. A ondulação residual pico a pico resultante (\textit{ripple}, $\Delta V_r$) pode ser estimada em primeira aproximação pela descarga linear sob corrente constante $I_{\text{carga}}$:
+\begin{equation}
+\Delta V_r \approx \frac{I_{\text{carga}}}{f_{\text{ret}}\, C}.
+\label{eq:ripple}
+\end{equation}
+Para a condição de projeto ($I_{\text{carga}} = 1\,\text{A}$, $f_{\text{ret}} = 120\,\text{Hz}$ e $C = 4700\,\mu\text{F}$), obtém-se $\Delta V_r \approx 1{,}77\,\text{V}_{\text{pp}}$. A verificação dos vales da tensão filtrada nessa condição, inclusive com redução de $10\%$ na rede, é apresentada na análise teórica da Seção~\ref{sec:teoria1A}.
+
+O valor de $25\,\text{V}$ do capacitor corresponde à sua tensão nominal de trabalho. A margem em relação a esse valor é avaliada com o pico em vazio medido de $19{,}1\,\text{V}$; com sobretensão de $+10\%$ na rede, o pico seria de $\approx 21\,\text{V}$ (cálculo), abaixo de $25\,\text{V}$.
+
+\subsubsection{Estágio de Regulação e Desacoplamento}
+A estabilização final é realizada pelo circuito integrado regulador linear de tensão positiva LM7812 (encapsulamento TO-220), cuja saída é de $12\,\text{V}$ DC com tolerância de $\pm 4\%$ ($11{,}5\,\text{V}$ a $12{,}5\,\text{V}$), conforme \href{https://www.ti.com/lit/ds/symlink/lm340.pdf}{Datasheet do LM7812} (Texas Instruments, documento \texttt{SNOSBT0L}), com proteção térmica e limitação de corrente internas. O componente físico utilizado na montagem possui gravação comercial \texttt{SCE7812} (lote genérico/remarcado sem folha de dados própria publicada pelo fabricante ou distribuidor), adotando-se o \textit{datasheet} da Texas Instruments como referência técnica; o valor da corrente de limitação não é citado neste relatório por não ter sido confirmado em \textit{datasheet} do fabricante utilizado. Para assegurar a regulação, a tensão mínima de entrada no pino~1 não deve cair abaixo da soma da tensão de saída com a tensão de \textit{dropout} do CI ($\approx 2\,\text{V}$), exigindo $V_{\text{in}} \gtrsim 14\,\text{V}$. Junto ao regulador são instalados dois capacitores cerâmicos de $100\,\text{nF}$: o da entrada (pino~1 ao GND) contribui para a estabilidade do regulador, e o da saída (pino~3 ao GND) atenua ruído de alta frequência. Esses capacitores não são o elemento responsável pela rejeição da ondulação de $120\,\text{Hz}$.
+
+\subsubsection{Dispositivos de Acionamento e Proteção}
+O circuito inclui no lado primário uma chave gangorra liga/desliga (SPST) em série com um fusível de $500\,\text{mA}$, instalado entre o plugue da tomada e o interruptor. No lado secundário, entre o nó comum dos catodos dos diodos retificadores e o restante do circuito, foi inserido um fusível de $1{,}5\,\text{A}$.
+
+O fusível de $500\,\text{mA}$ protege o primário. O de $1{,}5\,\text{A}$ possui valor acima da corrente nominal de $1\,\text{A}$ e foi adotado para suportar a corrente de carga do capacitor de $4700\,\mu\text{F}$ na energização, sem atuar indevidamente. Esse fusível não interrompe sobrecargas contínuas entre $1\,\text{A}$ e $1{,}5\,\text{A}$; sua função é principalmente a proteção contra curto-circuito. O regulador possui limitação interna de corrente, cujo valor depende do \textit{datasheet} do fabricante utilizado. O tipo e a tensão nominal dos fusíveis não foram especificados pelo vendedor. Como melhoria, recomenda-se fusível de retardo, com tensão nominal de $250\,\text{V}$ CA, no primário.
+
+\subsection{Critérios de Aceitação}
+
+Para a avaliação dos resultados, adotam-se os seguintes critérios:
+\begin{enumerate}
+    \item tensão de saída de $12\,\text{V} \pm 4\%$ ($11{,}5\,\text{V}$ a $12{,}5\,\text{V}$), faixa do \textit{datasheet} do regulador~\cite{ds_lm7812};
+    \item \textit{ripple} na saída muito menor que na entrada do regulador;
+    \item capacidade nominal de corrente de $1\,\text{A}$ (especificação do trabalho).
+\end{enumerate}
+A especificação do trabalho não define tolerâncias numéricas. A faixa de $\pm 4\%$ é a do \textit{datasheet} do regulador, e os demais critérios são qualitativos.

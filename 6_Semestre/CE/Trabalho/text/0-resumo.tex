@@ -1,0 +1,19 @@
+% Macro de pendencias (definida apenas se ainda nao existir; requer xcolor, carregado tambem por tikz).
+\providecommand{\pendente}[1]{\textcolor{red}{[PENDENTE: #1]}}
+
+{
+\small\sffamily\selectfont
+\textbf{\textit{Resumo} --- Este trabalho apresenta o projeto, a montagem em \textit{protoboard} e a verificação experimental de uma fonte linear regulada de $12\,\text{V}$ DC, projetada para corrente nominal de $1\,\text{A}$. O circuito emprega transformador de $12\,\text{V}+12\,\text{V}$ com derivação central, retificador de onda completa com dois diodos 1N4007, capacitor eletrolítico de $4700\,\mu\text{F} / 25\,\text{V}$, regulador LM7812 e dois capacitores de $100\,\text{nF}$, além de chave e fusíveis de proteção. Os ensaios com multímetro e osciloscópio percorreram os estágios da fonte: secundário do transformador com pico de $19{,}1\,\text{V}$ em vazio, onda retificada pulsante de $120\,\text{Hz}$, tensão filtrada de $17{,}96\,\text{V}$ com \textit{ripple} em dente de serra e saída regulada de $11{,}95\,\text{V}$, desvio de $-0{,}42\%$ em relação a $12\,\text{V}$. A corrente de $0{,}12\,\text{A}$ sobre um resistor de $100\,\Omega$ é compatível com a lei de Ohm. A fonte foi validada experimentalmente até $0{,}12\,\text{A}$; a operação em $1\,\text{A}$ foi apenas analisada teoricamente. A amplitude absoluta do \textit{ripple} não pôde ser validada, pois o fator da ponta do osciloscópio não foi registrado. O multímetro foi usado na função DC no Experimento~1, e o Experimento~5 não discriminou variação de carga. Recomendam-se dissipador no regulador, fusível de retardo e ensaio a $1\,\text{A}$.}
+
+\textbf{\textit{Palavras-chave} --- Capacitor eletrolítico, chave liga/desliga, derivação central, filtro capacitivo, fonte de alimentação linear, fusível, LM7812, retificador de onda completa, transformador.}
+}
+
+\vspace{1em}
+
+\begin{abstract}
+This paper presents the design, breadboard assembly, and experimental verification of a $12\,\text{V}$ DC linear regulated power supply rated for a nominal current of $1\,\text{A}$. The circuit uses a $12\,\text{V}+12\,\text{V}$ center-tapped transformer, a full-wave rectifier with two 1N4007 diodes, a $4700\,\mu\text{F} / 25\,\text{V}$ electrolytic capacitor, an LM7812 regulator, and two $100\,\text{nF}$ capacitors, together with a switch and protection fuses. Multimeter and oscilloscope tests covered the stages of the supply: a transformer secondary with a no-load peak of $19.1\,\text{V}$, a pulsating full-wave rectified waveform of $120\,\text{Hz}$, a filtered voltage of $17.96\,\text{V}$ with sawtooth ripple, and a regulated output of $11.95\,\text{V}$, a deviation of $-0.42\%$ from $12\,\text{V}$. The current of $0.12\,\text{A}$ through a $100\,\Omega$ resistor is consistent with Ohm's law. The supply was experimentally validated up to $0.12\,\text{A}$; operation at $1\,\text{A}$ was only analyzed theoretically. The absolute ripple amplitude could not be validated because the oscilloscope probe factor was not recorded. The multimeter was used in its DC function in Experiment~1, and Experiment~5 could not discriminate load variation. A heat sink for the regulator, a slow-blow fuse, and a test at $1\,\text{A}$ are recommended.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Capacitive filter, center tap, electrolytic capacitor, full-wave rectifier, fuse, linear power supply, LM7812, ON/OFF switch, transformer.
+\end{IEEEkeywords}

@@ -1,0 +1,12 @@
+NAO TERMINAL  ANULAVEL  FIRST / FOLLOW
+json          nao       FIRST  = {STRING, NUMBER, BOOLEAN, NULO, '{', '['}
+                        FOLLOW = {$}
+valor         nao       FIRST  = {STRING, NUMBER, BOOLEAN, NULO, '{', '['}
+                        FOLLOW = {$, ',', '}', ']'}
+objeto        nao       FIRST  = {'{'}
+                        FOLLOW = {$, ',', '}', ']'}
+array         nao       FIRST  = {'['}
+                        FOLLOW = {$, ',', '}', ']'}
+par           nao       FIRST  = {STRING}
+                        FOLLOW = {',', '}'}
+status 0

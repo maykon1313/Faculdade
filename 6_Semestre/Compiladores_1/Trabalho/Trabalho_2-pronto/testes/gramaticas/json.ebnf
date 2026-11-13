@@ -1,0 +1,15 @@
+(* Gramatica de JSON para o modo proprio *)
+TOKENS
+  STRING   = /"[^"\n]*"/ ;
+  NUMBER   = /-?[0-9]+/ ;
+  BOOLEAN  = /true|false/ ;
+  NULO     = /null/ ;
+  SKIP     = /[ \t\r\n]+/ ;
+
+RULES
+  json   = valor ;
+  valor  = objeto | array | STRING | NUMBER | BOOLEAN | NULO ;
+  objeto = "{" [ par { "," par } ] "}" ;
+  par    = STRING ":" valor ;
+  array  = "[" [ valor { "," valor } ] "]" ;
+
