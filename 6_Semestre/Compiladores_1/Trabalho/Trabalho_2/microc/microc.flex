@@ -9,34 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* ---------------------------------------------------------------------
- * 1. VOCABULARIO DE TOKENS (equivalente a tokens.h)
- * ------------------------------------------------------------------- */
-
-typedef enum {
-    /* Tokens fundamentais */
-    UNDEF,          /* token indefinido (usado para reportar erros) */
-    ID,             /* identificador                                */
-    END_OF_FILE,    /* fim de arquivo                               */
-
-    /* Constantes literais */
-    INTEGERCONST,
-    CHARCONST,
-    STRINGCONST,
-
-    /* Operadores aritmeticos */
-    PLUS, MINUS, MUL, DIV, MOD,
-
-    /* Operadores relacionais e logicos */
-    EQ, NEQ, LT, GT, LEQ, GEQ, AND, OR, NOT,
-
-    /* Simbolos de atribuicao e pontuacao */
-    ASSIGN, SEMICOLON, COMMA, LPAREN, RPAREN,
-    LBRACE, RBRACE, LBRACKET, RBRACKET,
-
-    /* Palavras reservadas */
-    MAIN, IF, ELSE, FOR, RETURN, INT, CHAR, PRINT
-} TokenType;
+#include "tokens.h"
 
 /* Melhor legibilidade, mesma sequencia do TokenType. */
 static const char *nome_token[] = {
@@ -146,6 +119,8 @@ static void guarda_literal(void) {
 
 %}
 
+%option prefix="microc_yy" noyywrap
+
 /* -----------------------------------------------------------------------
  * 2. SECAO DE DEFINICOES
  * ------------------------------------------------------------------- */
@@ -242,7 +217,6 @@ ALFANUM     [a-zA-Z0-9_]
                         return UNDEF;
                     }
 <CHAR_LITERAL>\n            {
-                        linha_atual++;
                         microc_yylval.error_msg = "Caractere nao terminado";
                         BEGIN(INITIAL);
                         return UNDEF;
@@ -280,7 +254,6 @@ ALFANUM     [a-zA-Z0-9_]
                         return UNDEF;
                     }
 <STRING_LITERAL>\n           {
-                        linha_atual++;
                         microc_yylval.error_msg = "String nao terminada";
                         BEGIN(INITIAL);
                         return UNDEF;
@@ -331,40 +304,16 @@ ALFANUM     [a-zA-Z0-9_]
  * 4. SUB-ROTINAS DO USUARIO
  * ------------------------------------------------------------------- */
 
-/* yywrap: Ao atingir o EOF, o flexe deve parar a leitura. */
-int yywrap(void) {
-    return 1;
-}
-
-int main(int argc, char **argv) {
-    if (argc < 2) {
-        fprintf(stderr, "Uso: %s <arquivo.mc>\n", argv[0]);
-        return 1;
+void libera_tabela_simbolos(void) {
+    Simbolo *s = tabela_simbolos;
+    while (s != NULL) {
+        Simbolo *prox = s->proximo;
+        free(s->texto);
+        free(s);
+        s = prox;
     }
-
-    FILE *arquivo_fonte = fopen(argv[1], "r");
-    if (!arquivo_fonte) {
-        fprintf(stderr, "Erro: nao foi possivel abrir o arquivo '%s'\n", argv[1]);
-        return 1;
-    }
-    yyin = arquivo_fonte;
-
-    int tipo;
-    while ((tipo = yylex()) != END_OF_FILE) {
-        if (tipo == UNDEF) {
-            fprintf(stderr, "ERRO LEXICO (linha %d): %s\n",
-                    linha_atual, microc_yylval.error_msg);
-            continue;
-        }
-         const char *lexema = yytext;
-         if (tipo == ID || tipo == INTEGERCONST ||
-             tipo == CHARCONST || tipo == STRINGCONST) {
-             lexema = microc_yylval.symbol;
-         }
-         printf("Token: tipo = %-13s lexema = '%s'  linha = %d\n",
-             nome_token[tipo], lexema, linha_atual);
-    }
-
-    fclose(arquivo_fonte);
-    return 0;
+    tabela_simbolos = NULL;
+    free(literal_buffer);
+    literal_buffer = NULL;
+    literal_length = literal_capacity = 0;
 }

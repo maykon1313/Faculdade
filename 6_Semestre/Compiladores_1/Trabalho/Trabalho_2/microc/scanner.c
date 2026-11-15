@@ -7,7 +7,7 @@
  * que mantenha a variavel global linha_atual (TP1, secao 4.4). Sem
  * alteracoes, o lexema de cada token e o texto reconhecido (microc_yytext).
  *
- * TODO(aluno): adaptar os pontos marcados ao seu TP1, para que
+ * Implementado: adaptar os pontos marcados ao seu TP1, para que
  *   - ID e constantes usem o texto do Symbol (microc_yylval.symbol), ja
  *     com as sequencias de escape convertidas (TP1, secao 4.3);
  *   - UNDEF traga a mensagem de microc_yylval.error_msg
@@ -25,14 +25,24 @@ extern char *microc_yytext;
 extern int   linha_atual;
 extern int   microc_yylex_destroy(void);
 
+typedef struct {
+    char *symbol;
+    char *error_msg;
+} YYSTYPE;
+extern YYSTYPE microc_yylval;
+void libera_tabela_simbolos(void);
+
 /* Texto a guardar em Token.lexema para o token que microc_yylex acabou
  * de devolver. */
 static const char *texto_do_lexema(int tipo)
 {
-    /* TODO(aluno): para ID, INTEGERCONST, CHARCONST e STRINGCONST, devolva
-     * o texto do Symbol em microc_yylval.symbol; para UNDEF, devolva
-     * microc_yylval.error_msg. */
-    (void) tipo;
+    if (tipo == (int) UNDEF)
+        return microc_yylval.error_msg;
+    if (tipo == (int) ID || tipo == (int) INTEGERCONST ||
+        tipo == (int) CHARCONST || tipo == (int) STRINGCONST) {
+        if (microc_yylval.symbol != NULL)
+            return microc_yylval.symbol;
+    }
     return microc_yytext;
 }
 
@@ -95,6 +105,6 @@ Token proximo_token(void)
 
 void scanner_finalizar(void)
 {
-    /* TODO(aluno): liberar tambem a tabela de strings do TP1. */
+    libera_tabela_simbolos();
     microc_yylex_destroy();
 }

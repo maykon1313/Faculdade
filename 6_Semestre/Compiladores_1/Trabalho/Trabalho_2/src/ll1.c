@@ -17,7 +17,7 @@
  * em que o else fica com o if mais proximo, como em C.
  *
  * Fornecido: reportar (formata as mensagens).
- * TODO(aluno): verificar_expr e ll1_verificar.
+ * Implementado: verificar_expr e ll1_verificar.
  */
 #include <stdarg.h>
 #include <stdio.h>
@@ -42,19 +42,104 @@ static void reportar(const Gramatica *g, int nt, const Expr *e, int eh_aviso,
     fputc('\n', stderr);
 }
 
-/* TODO(aluno): percorrer as regras e, para cada no E_ALT, E_OPC e E_REP,
- * verificar as condicoes do cabecalho. Use bitset_intersecao/bitset_vazio
- * e reporte com reportar(...), por exemplo:
- *
- *   reportar(g, nt, e, 0, &comum, "alternativas %d e %d comecam com", i+1, j+1);
- *
- * que imprime:
- *   expr.ebnf:7:10: erro: conflito LL(1) em stmt: alternativas 1 e 2 comecam com {ID}
- *
- * Retorne o numero de ERROS (avisos nao contam). */
+static int verificar_expr(const Gramatica *g, int nt, const Expr *e)
+{
+    int i, j, erros = 0;
+    Bitset comum;
+
+    if (e == NULL)
+        return 0;
+
+    bitset_iniciar(&comum, g->nterms);
+
+    switch (e->tipo) {
+    case E_ALT:
+        /* 1. FIRST das alternativas sao disjuntos dois a dois */
+        for (i = 0; i < e->nfilhos; i++) {
+            for (j = i + 1; j < e->nfilhos; j++) {
+                bitset_intersecao(&comum, &e->filhos[i]->first, &e->filhos[j]->first);
+                if (!bitset_vazio(&comum)) {
+                    reportar(g, nt, e, 0, &comum,
+                             "alternativas %d e %d comecam com", i + 1, j + 1);
+                    erros++;
+                }
+            }
+        }
+        /* 1 (segunda parte): no maximo uma alternativa e anulavel */
+        for (i = 0; i < e->nfilhos; i++) {
+            if (e->filhos[i]->anulavel) {
+                for (j = i + 1; j < e->nfilhos; j++) {
+                    if (e->filhos[j]->anulavel) {
+                        reportar(g, nt, e, 0, NULL,
+                                 "alternativas %d e %d sao ambas anulaveis",
+                                 i + 1, j + 1);
+                        erros++;
+                    }
+                }
+            }
+        }
+        /* 2. Se uma alternativa ai e anulavel, FOLLOW e disjunto dos FIRST das demais */
+        for (i = 0; i < e->nfilhos; i++) {
+            if (e->filhos[i]->anulavel) {
+                for (j = 0; j < e->nfilhos; j++) {
+                    if (i != j) {
+                        bitset_intersecao(&comum, &e->follow, &e->filhos[j]->first);
+                        if (!bitset_vazio(&comum)) {
+                            reportar(g, nt, e, 0, &comum,
+                                     "alternativa %d e anulavel e alternativa %d comeca com",
+                                     i + 1, j + 1);
+                            erros++;
+                        }
+                    }
+                }
+            }
+        }
+        break;
+
+    case E_OPC:
+    case E_REP: {
+        const char *nome = (e->tipo == E_OPC) ? "[ ]" : "{ }";
+        if (e->nfilhos > 0) {
+            /* 3 (primeira parte): o conteudo nao pode ser anulavel (ERRO) */
+            if (e->filhos[0]->anulavel) {
+                reportar(g, nt, e, 0, NULL,
+                         "conteudo de %s e anulavel", nome);
+                erros++;
+            }
+            /* 3 (segunda parte): FIRST e FOLLOW disjuntos (AVISO - resolvido de forma gulosa) */
+            bitset_intersecao(&comum, &e->filhos[0]->first, &e->follow);
+            if (!bitset_vazio(&comum)) {
+                reportar(g, nt, e, 1, &comum,
+                         "FIRST e FOLLOW de %s se intersectam (resolvido de forma gulosa) em",
+                         nome);
+            }
+        }
+        break;
+    }
+
+    default:
+        break;
+    }
+
+    bitset_liberar(&comum);
+
+    /* Verifica recursivamente todos os filhos */
+    for (i = 0; i < e->nfilhos; i++)
+        erros += verificar_expr(g, nt, e->filhos[i]);
+
+    return erros;
+}
+
+/* Percorre as regras e verifica as condicoes LL(1).
+ * Retorna o numero de ERROS (avisos nao contam). */
 int ll1_verificar(const Gramatica *g)
 {
-    (void) reportar;
-    (void) g;
-    return 0;
+    int i, erros = 0;
+
+    for (i = 0; i < g->nnts; i++) {
+        if (g->nts[i].regra != NULL)
+            erros += verificar_expr(g, i, g->nts[i].regra);
+    }
+
+    return erros;
 }

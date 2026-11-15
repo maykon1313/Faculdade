@@ -5,7 +5,7 @@ Aqui fica o scanner de Micro C do TP1, convertido em função para o analisador 
 Já fornecidos:
 
 - `scanner.h`: interface usada pelo analisador gerado (`scanner_iniciar`, `proximo_token`, `scanner_finalizar`).
-- `scanner.c`: adaptador entre `microc_yylex()` e `Token`. Procure os `TODO(aluno)`.
+- `scanner.c`: adaptador entre `microc_yylex()` e `Token`.
 
 Copie do seu TP1:
 

@@ -10,7 +10,7 @@
  *
  * Se o seu tokens.h do TP1 usar outros nomes, ajuste a tabela.
  *
- * TODO(aluno): implementar microc_carregar_tokens_h.
+ * Implementado: implementar microc_carregar_tokens_h.
  */
 #include <ctype.h>
 #include <stdio.h>
@@ -54,21 +54,103 @@ static void adicionar_nome(const char *s, size_t n)
     nomes[nnomes++] = xstrndup(s, n);
 }
 
-/* TODO(aluno): abrir o arquivo (ler_arquivo ajuda), localizar a
- * enumeracao "typedef enum { ... } TokenType;" e chamar adicionar_nome
- * para cada identificador da lista, ignorando comentarios e valores
- * explicitos ("X = 3"). Retorne 0 em caso de sucesso.
- * Enquanto nao implementada, a verificacao dos nomes e pulada. */
+/* Abre o arquivo de tokens, localiza a enumeracao
+ * "typedef enum { ... } TokenType;" e adiciona cada identificador a lista.
+ * Ignora comentarios e valores explicitos ("X = 3"). Retorna 0 em caso de sucesso. */
 int microc_carregar_tokens_h(const char *caminho)
 {
-    static int avisado = 0;
-    (void) adicionar_nome;
-    if (!avisado) {
-        diag_aviso(0, 0, "microc_carregar_tokens_h ainda nao implementado: nomes "
-                   "de %s nao verificados", caminho ? caminho : "tokens.h");
-        avisado = 1;
+    char *fonte, *p, *fim;
+
+    if (nnomes > 0)
+        return 0;
+
+    if (caminho == NULL)
+        return -1;
+
+    fonte = ler_arquivo(caminho);
+    if (fonte == NULL)
+        return -1;
+
+    p = strstr(fonte, "enum");
+    if (p == NULL) {
+        free(fonte);
+        return -1;
     }
-    return -1;
+
+    p = strchr(p, '{');
+    if (p == NULL) {
+        free(fonte);
+        return -1;
+    }
+
+    fim = strchr(p, '}');
+    if (fim == NULL) {
+        free(fonte);
+        return -1;
+    }
+
+    p++; /* passa '{' */
+
+    while (p < fim) {
+        /* Pula espacos em branco */
+        if (isspace((unsigned char) *p)) {
+            p++;
+            continue;
+        }
+
+        /* Pula comentarios estilo C */
+        if (p[0] == '/' && p[1] == '*') {
+            p += 2;
+            while (p < fim && !(p[0] == '*' && p[1] == '/'))
+                p++;
+            if (p < fim)
+                p += 2;
+            continue;
+        }
+
+        /* Pula comentarios de linha: // ... */
+        if (p[0] == '/' && p[1] == '/') {
+            p += 2;
+            while (p < fim && *p != '\n')
+                p++;
+            continue;
+        }
+
+        /* Identificador (nome do token) */
+        if (isalpha((unsigned char) *p) || *p == '_') {
+            const char *inicio = p;
+            while (p < fim && (isalnum((unsigned char) *p) || *p == '_'))
+                p++;
+            adicionar_nome(inicio, (size_t) (p - inicio));
+
+            /* Pula possivel valor explicito '= <valor>' antes da virgula */
+            while (p < fim && *p != ',' && *p != '}') {
+                if (isspace((unsigned char) *p)) {
+                    p++;
+                } else if (p[0] == '/' && p[1] == '*') {
+                    p += 2;
+                    while (p < fim && !(p[0] == '*' && p[1] == '/'))
+                        p++;
+                    if (p < fim)
+                        p += 2;
+                } else if (p[0] == '/' && p[1] == '/') {
+                    p += 2;
+                    while (p < fim && *p != '\n')
+                        p++;
+                } else {
+                    p++;
+                }
+            }
+            if (p < fim && *p == ',')
+                p++;
+            continue;
+        }
+
+        p++;
+    }
+
+    free(fonte);
+    return 0;
 }
 
 int microc_token_existe(const char *nome)

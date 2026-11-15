@@ -15,7 +15,7 @@
  * as primitivas, o lexico (exceto o reconhecimento das expressoes
  * regulares) e a traducao de terminais e nao terminais.
  *
- * TODO(aluno):
+ * Implementado:
  *   - gen_expr: traducao de sequencia, alternativa, [ ] e { }
  *     (esquema da secao 4 do enunciado);
  *   - gen_casamento_regex: converter uma expressao regular de TOKENS em
@@ -272,6 +272,8 @@ static void emit_erro(Emissor *em, const Bitset *esperados)
 
 static void gen_expr(Emissor *em, const Gramatica *g, const Expr *e)
 {
+    if (e == NULL)
+        return;
 
     switch (e->tipo) {
     case E_TERM:
@@ -280,35 +282,431 @@ static void gen_expr(Emissor *em, const Gramatica *g, const Expr *e)
     case E_NAOTERM:
         emit(em, "parse_%s();", g->nts[e->simbolo].nome);
         break;
-    /*
-     * TODO(aluno): traduzir as demais construcoes (secao 4):
-     *
-     *   E_SEQ   a1 a2 ... an   ->  gen_expr de cada filho, em ordem
-     *   E_ALT   a1 | ... | an  ->  if (FIRST(a1)) {...} else if ... else erro
-     *   E_OPC   [ a ]          ->  if (FIRST(a)) { ... }
-     *   E_REP   { a }          ->  while (FIRST(a)) { ... }
-     *   E_VAZIO                ->  nada
-     *
-     * Ferramentas disponiveis neste arquivo:
-     *   emit(em, fmt, ...)                 uma linha indentada
-     *   em->nivel++ / em->nivel--          indentacao dos blocos
-     *   emit_teste(em, "if (", g, &x->first, ") {")
-     *   emit_erro(em, &e->first)           erro_sintatico com os esperados
-     * Os conjuntos FIRST de cada no foram calculados em conjuntos.c.
-     * Uma alternativa anulavel nao tem teste: ela fica no else final,
-     * no lugar do erro.
-     */
-    default:
-        emit(em, "/* TODO(aluno): construcao ainda nao traduzida */");
-        (void) emit_teste;
-        (void) emit_erro;
+    case E_VAZIO:
         break;
+    case E_SEQ: {
+        int i;
+        for (i = 0; i < e->nfilhos; i++)
+            gen_expr(em, g, e->filhos[i]);
+        break;
+    }
+    case E_OPC:
+        if (e->nfilhos > 0) {
+            emit_teste(em, "if (", g, &e->filhos[0]->first, ") {");
+            em->nivel++;
+            gen_expr(em, g, e->filhos[0]);
+            em->nivel--;
+            emit(em, "}");
+        }
+        break;
+    case E_REP:
+        if (e->nfilhos > 0) {
+            emit_teste(em, "while (", g, &e->filhos[0]->first, ") {");
+            em->nivel++;
+            gen_expr(em, g, e->filhos[0]);
+            em->nivel--;
+            emit(em, "}");
+        }
+        break;
+    case E_ALT: {
+        int i, primeiro = 1, idx_anulavel = -1;
+        for (i = 0; i < e->nfilhos; i++) {
+            if (e->filhos[i]->anulavel) {
+                idx_anulavel = i;
+                break;
+            }
+        }
+        for (i = 0; i < e->nfilhos; i++) {
+            if (i == idx_anulavel)
+                continue;
+            if (primeiro) {
+                emit_teste(em, "if (", g, &e->filhos[i]->first, ") {");
+                primeiro = 0;
+            } else {
+                emit_teste(em, "} else if (", g, &e->filhos[i]->first, ") {");
+            }
+            em->nivel++;
+            gen_expr(em, g, e->filhos[i]);
+            em->nivel--;
+        }
+        if (idx_anulavel >= 0) {
+            if (!primeiro) {
+                emit(em, "} else {");
+                em->nivel++;
+                gen_expr(em, g, e->filhos[idx_anulavel]);
+                em->nivel--;
+                emit(em, "}");
+            } else {
+                gen_expr(em, g, e->filhos[idx_anulavel]);
+            }
+        } else {
+            if (!primeiro) {
+                emit(em, "} else {");
+                em->nivel++;
+                emit_erro(em, &e->first);
+                em->nivel--;
+                emit(em, "}");
+            } else {
+                emit_erro(em, &e->first);
+            }
+        }
+        break;
+    }
     }
 }
 
 /* ------------------------------------------------------------------ */
 /* Expressoes regulares de TOKENS (modo proprio)                      */
 /* ------------------------------------------------------------------ */
+
+#define MAX_NFA_STATES 512
+#define MAX_DFA_STATES 128
+
+typedef struct {
+    int trans_tipo; /* 0 = CHAR, 1 = EPSILON */
+    int out1;
+    int out2;
+    unsigned char match[256];
+} NFAEstado;
+
+typedef struct {
+    int start;
+    int accept;
+} Frag;
+
+typedef struct {
+    NFAEstado estados[MAX_NFA_STATES];
+    int nestados;
+    int erro;
+} NFABuilder;
+
+typedef struct {
+    unsigned char nfa_set[64];
+    int trans[256];
+    int aceita;
+} DFAEstado;
+
+static void set_add(unsigned char *set, int s)
+{
+    set[s / 8] |= (unsigned char) (1 << (s % 8));
+}
+
+static int set_has(const unsigned char *set, int s)
+{
+    return (set[s / 8] & (1 << (s % 8))) != 0;
+}
+
+static int nfa_novo_estado(NFABuilder *b, int tipo)
+{
+    int s;
+    if (b->nestados >= MAX_NFA_STATES) {
+        b->erro = 1;
+        return 0;
+    }
+    s = b->nestados++;
+    b->estados[s].trans_tipo = tipo;
+    b->estados[s].out1 = -1;
+    b->estados[s].out2 = -1;
+    memset(b->estados[s].match, 0, 256);
+    return s;
+}
+
+static Frag nfa_char(NFABuilder *b, const unsigned char *match)
+{
+    Frag f;
+    f.start = nfa_novo_estado(b, 0);
+    f.accept = nfa_novo_estado(b, 1);
+    memcpy(b->estados[f.start].match, match, 256);
+    b->estados[f.start].out1 = f.accept;
+    return f;
+}
+
+static Frag nfa_concat(NFABuilder *b, Frag f1, Frag f2)
+{
+    Frag f;
+    b->estados[f1.accept].out1 = f2.start;
+    f.start = f1.start;
+    f.accept = f2.accept;
+    return f;
+}
+
+static Frag nfa_alt(NFABuilder *b, Frag f1, Frag f2)
+{
+    Frag f;
+    f.start = nfa_novo_estado(b, 1);
+    f.accept = nfa_novo_estado(b, 1);
+    b->estados[f.start].out1 = f1.start;
+    b->estados[f.start].out2 = f2.start;
+    b->estados[f1.accept].out1 = f.accept;
+    b->estados[f2.accept].out1 = f.accept;
+    return f;
+}
+
+static Frag nfa_star(NFABuilder *b, Frag f1)
+{
+    Frag f;
+    f.start = nfa_novo_estado(b, 1);
+    f.accept = nfa_novo_estado(b, 1);
+    b->estados[f.start].out1 = f1.start;
+    b->estados[f.start].out2 = f.accept;
+    b->estados[f1.accept].out1 = f1.start;
+    b->estados[f1.accept].out2 = f.accept;
+    return f;
+}
+
+static Frag nfa_plus(NFABuilder *b, Frag f1)
+{
+    Frag f;
+    f.start = nfa_novo_estado(b, 1);
+    f.accept = nfa_novo_estado(b, 1);
+    b->estados[f.start].out1 = f1.start;
+    b->estados[f1.accept].out1 = f1.start;
+    b->estados[f1.accept].out2 = f.accept;
+    return f;
+}
+
+static Frag nfa_opt(NFABuilder *b, Frag f1)
+{
+    Frag f;
+    f.start = nfa_novo_estado(b, 1);
+    f.accept = nfa_novo_estado(b, 1);
+    b->estados[f.start].out1 = f1.start;
+    b->estados[f.start].out2 = f.accept;
+    b->estados[f1.accept].out1 = f.accept;
+    return f;
+}
+
+static int parse_escape(const char **ps)
+{
+    char c = **ps;
+    if (c == '\0')
+        return '\\';
+    (*ps)++;
+    switch (c) {
+    case 'n': return '\n';
+    case 't': return '\t';
+    case 'r': return '\r';
+    case 'a': return '\a';
+    case 'b': return '\b';
+    case 'f': return '\f';
+    case 'v': return '\v';
+    case '0': return '\0';
+    default:  return (unsigned char) c;
+    }
+}
+
+static void parse_class(const char **ps, unsigned char *match, int *erro)
+{
+    int neg = 0;
+    memset(match, 0, 256);
+    if (**ps == '^') {
+        neg = 1;
+        (*ps)++;
+    }
+    while (**ps != ']' && **ps != '\0') {
+        int c1;
+        if (**ps == '\\') {
+            (*ps)++;
+            c1 = parse_escape(ps);
+        } else {
+            c1 = (unsigned char) **ps;
+            (*ps)++;
+        }
+        if (**ps == '-' && *(*ps + 1) != ']' && *(*ps + 1) != '\0') {
+            int c2, k;
+            (*ps)++; /* consome '-' */
+            if (**ps == '\\') {
+                (*ps)++;
+                c2 = parse_escape(ps);
+            } else {
+                c2 = (unsigned char) **ps;
+                (*ps)++;
+            }
+            if (c1 <= c2) {
+                for (k = c1; k <= c2; k++)
+                    match[k] = 1;
+            } else {
+                for (k = c2; k <= c1; k++)
+                    match[k] = 1;
+            }
+        } else {
+            match[c1] = 1;
+        }
+    }
+    if (**ps == ']') {
+        (*ps)++;
+    } else {
+        *erro = 1;
+    }
+    if (neg) {
+        int k;
+        for (k = 1; k < 256; k++)
+            match[k] = (unsigned char) (!match[k]);
+        match[0] = 0;
+    }
+}
+
+static Frag parse_regex_expr(NFABuilder *b, const char **ps);
+
+static Frag parse_base(NFABuilder *b, const char **ps)
+{
+    unsigned char m[256];
+    Frag f;
+    memset(&f, 0, sizeof(f));
+
+    if (**ps == '(') {
+        (*ps)++;
+        f = parse_regex_expr(b, ps);
+        if (**ps == ')')
+            (*ps)++;
+        else
+            b->erro = 1;
+        return f;
+    }
+    if (**ps == '.') {
+        (*ps)++;
+        memset(m, 1, 256);
+        m[0] = 0;
+        m['\n'] = 0;
+        return nfa_char(b, m);
+    }
+    if (**ps == '[') {
+        (*ps)++;
+        parse_class(ps, m, &b->erro);
+        return nfa_char(b, m);
+    }
+    if (**ps == '\\') {
+        int c;
+        (*ps)++;
+        c = parse_escape(ps);
+        memset(m, 0, 256);
+        m[c] = 1;
+        return nfa_char(b, m);
+    }
+    if (**ps != '\0' && **ps != '|' && **ps != ')' && **ps != '*' && **ps != '+' && **ps != '?') {
+        int c = (unsigned char) **ps;
+        (*ps)++;
+        memset(m, 0, 256);
+        m[c] = 1;
+        return nfa_char(b, m);
+    }
+    b->erro = 1;
+    return f;
+}
+
+static Frag parse_factor(NFABuilder *b, const char **ps)
+{
+    Frag f = parse_base(b, ps);
+    if (b->erro)
+        return f;
+    while (**ps == '*' || **ps == '+' || **ps == '?') {
+        char op = **ps;
+        (*ps)++;
+        if (op == '*')
+            f = nfa_star(b, f);
+        else if (op == '+')
+            f = nfa_plus(b, f);
+        else if (op == '?')
+            f = nfa_opt(b, f);
+    }
+    return f;
+}
+
+static Frag parse_term(NFABuilder *b, const char **ps)
+{
+    Frag f;
+    int primeiro = 1;
+    memset(&f, 0, sizeof(f));
+
+    while (**ps != '\0' && **ps != '|' && **ps != ')') {
+        Frag f2 = parse_factor(b, ps);
+        if (b->erro)
+            return f;
+        if (primeiro) {
+            f = f2;
+            primeiro = 0;
+        } else {
+            f = nfa_concat(b, f, f2);
+        }
+    }
+    if (primeiro) {
+        f.start = nfa_novo_estado(b, 1);
+        f.accept = nfa_novo_estado(b, 1);
+        b->estados[f.start].out1 = f.accept;
+    }
+    return f;
+}
+
+static Frag parse_regex_expr(NFABuilder *b, const char **ps)
+{
+    Frag f = parse_term(b, ps);
+    if (b->erro)
+        return f;
+    while (**ps == '|') {
+        Frag f2;
+        (*ps)++;
+        f2 = parse_term(b, ps);
+        if (b->erro)
+            return f;
+        f = nfa_alt(b, f, f2);
+    }
+    return f;
+}
+
+static void epsilon_closure(NFABuilder *b, unsigned char *set)
+{
+    int pilha[MAX_NFA_STATES], topo = 0, i;
+    for (i = 0; i < b->nestados; i++) {
+        if (set_has(set, i))
+            pilha[topo++] = i;
+    }
+    while (topo > 0) {
+        int u = pilha[--topo];
+        if (b->estados[u].trans_tipo == 1) {
+            int v1 = b->estados[u].out1;
+            int v2 = b->estados[u].out2;
+            if (v1 >= 0 && v1 < b->nestados && !set_has(set, v1)) {
+                set_add(set, v1);
+                pilha[topo++] = v1;
+            }
+            if (v2 >= 0 && v2 < b->nestados && !set_has(set, v2)) {
+                set_add(set, v2);
+                pilha[topo++] = v2;
+            }
+        }
+    }
+}
+
+static void emitir_condicao_faixas(FILE *f, const unsigned char *match)
+{
+    int c, r_start = -1, primeiro = 1;
+    for (c = 1; c <= 256; c++) {
+        if (c < 256 && match[c]) {
+            if (r_start < 0)
+                r_start = c;
+        } else {
+            if (r_start >= 0) {
+                int r_end = c - 1;
+                if (!primeiro)
+                    fputs(" || ", f);
+                if (r_start == r_end) {
+                    fprintf(f, "c == %d", r_start);
+                } else if (r_end == 255) {
+                    if (r_start == 0)
+                        fputs("1", f);
+                    else
+                        fprintf(f, "c >= %d", r_start);
+                } else if (r_start == 0) {
+                    fprintf(f, "c <= %d", r_end);
+                } else {
+                    fprintf(f, "(c >= %d && c <= %d)", r_start, r_end);
+                }
+                primeiro = 0;
+                r_start = -1;
+            }
+        }
+    }
+}
 
 /* Emite a funcao
  *     static size_t <nome>(const char *s)
@@ -317,20 +715,133 @@ static void gen_expr(Emissor *em, const Gramatica *g, const Expr *e)
  * Retorna 0 se a expressao for valida (senao reporte com diag_erro). */
 static int gen_casamento_regex(FILE *f, const char *nome, const char *regex)
 {
-    /* TODO(aluno): converter a expressao regular em automato finito
-     * deterministico (por exemplo: analisar a expressao, construir o AFN
-     * de Thompson e determiniza-lo pela construcao de subconjuntos) e
-     * emitir o automato como codigo C: um switch sobre o estado, com as
-     * transicoes por faixas de caracteres, guardando a ultima posicao em
-     * que o automato passou por um estado final. Subconjunto minimo:
-     * concatenacao, |, *, +, ?, parenteses, classes [a-z] e [^...], o
-     * ponto e escapes como \n, \t, \\ e \/.
-     *
-     * O stub abaixo nao reconhece nada. */
+    NFABuilder b;
+    Frag frag;
+    const char *p;
+    DFAEstado dfa[MAX_DFA_STATES];
+    int ndfa = 0, i, c, u, k;
+
+    if (regex == NULL || *regex == '\0') {
+        fprintf(f, "static size_t %s(const char *s)\n{\n    (void) s;\n    return 0;\n}\n\n", nome);
+        return 0;
+    }
+
+    memset(&b, 0, sizeof(b));
+    p = regex;
+    frag = parse_regex_expr(&b, &p);
+    if (b.erro || *p != '\0') {
+        diag_erro(0, 0, "expressao regular invalida '%s'", regex);
+        return -1;
+    }
+
+    /* Constroi o DFA a partir do NFA */
+    memset(&dfa[0], 0, sizeof(DFAEstado));
+    set_add(dfa[0].nfa_set, frag.start);
+    epsilon_closure(&b, dfa[0].nfa_set);
+    dfa[0].aceita = set_has(dfa[0].nfa_set, frag.accept);
+    for (c = 0; c < 256; c++)
+        dfa[0].trans[c] = -1;
+    ndfa = 1;
+
+    for (i = 0; i < ndfa; i++) {
+        for (c = 1; c < 256; c++) {
+            unsigned char dest_set[64];
+            int has_any = 0, d;
+            memset(dest_set, 0, sizeof(dest_set));
+
+            for (u = 0; u < b.nestados; u++) {
+                if (set_has(dfa[i].nfa_set, u)) {
+                    if (b.estados[u].trans_tipo == 0 && b.estados[u].match[c]) {
+                        int v = b.estados[u].out1;
+                        if (v >= 0) {
+                            set_add(dest_set, v);
+                            has_any = 1;
+                        }
+                    }
+                }
+            }
+            if (!has_any) {
+                dfa[i].trans[c] = -1;
+                continue;
+            }
+            epsilon_closure(&b, dest_set);
+            d = -1;
+            for (k = 0; k < ndfa; k++) {
+                if (memcmp(dfa[k].nfa_set, dest_set, sizeof(dest_set)) == 0) {
+                    d = k;
+                    break;
+                }
+            }
+            if (d < 0) {
+                if (ndfa >= MAX_DFA_STATES) {
+                    diag_erro(0, 0, "automato da expressao regular '%s' excedeu o limite de estados", regex);
+                    return -1;
+                }
+                d = ndfa++;
+                memset(&dfa[d], 0, sizeof(DFAEstado));
+                memcpy(dfa[d].nfa_set, dest_set, sizeof(dest_set));
+                dfa[d].aceita = set_has(dfa[d].nfa_set, frag.accept);
+                for (k = 0; k < 256; k++)
+                    dfa[d].trans[k] = -1;
+            }
+            dfa[i].trans[c] = d;
+        }
+    }
+
+    /* Emissao da funcao em codigo C */
     fprintf(f, "static size_t %s(const char *s)\n{\n", nome);
-    fputs("    /* TODO(aluno): automato para ", f);
-    emitir_comentario(f, regex);
-    fputs(" */\n    (void) s;\n    return 0;\n}\n\n", f);
+    fprintf(f, "    size_t i = 0, melhor = 0;\n");
+    fprintf(f, "    int estado = 0;\n");
+    fprintf(f, "    static const int aceita[%d] = {", ndfa);
+    for (i = 0; i < ndfa; i++)
+        fprintf(f, "%s%d", i > 0 ? ", " : " ", dfa[i].aceita);
+    fprintf(f, " };\n");
+    fprintf(f, "    if (aceita[0])\n        melhor = 0;\n");
+    fprintf(f, "    while (s[i] != '\\0') {\n");
+    fprintf(f, "        unsigned char c = (unsigned char) s[i];\n");
+    fprintf(f, "        switch (estado) {\n");
+
+    for (i = 0; i < ndfa; i++) {
+        int alvos[MAX_DFA_STATES], nalvos = 0;
+        for (c = 1; c < 256; c++) {
+            int t = dfa[i].trans[c];
+            if (t >= 0) {
+                int ja = 0;
+                for (k = 0; k < nalvos; k++) {
+                    if (alvos[k] == t) { ja = 1; break; }
+                }
+                if (!ja)
+                    alvos[nalvos++] = t;
+            }
+        }
+        if (nalvos == 0) {
+            fprintf(f, "        case %d:\n            goto fim;\n", i);
+        } else {
+            fprintf(f, "        case %d:\n", i);
+            for (k = 0; k < nalvos; k++) {
+                int target = alvos[k];
+                unsigned char match_alvo[256];
+                memset(match_alvo, 0, 256);
+                for (c = 1; c < 256; c++) {
+                    if (dfa[i].trans[c] == target)
+                        match_alvo[c] = 1;
+                }
+                if (k == 0)
+                    fputs("            if (", f);
+                else
+                    fputs(" else if (", f);
+                emitir_condicao_faixas(f, match_alvo);
+                fprintf(f, ") {\n                estado = %d;\n            }", target);
+            }
+            fputs(" else {\n                goto fim;\n            }\n            break;\n", f);
+        }
+    }
+
+    fprintf(f, "        default:\n            goto fim;\n        }\n");
+    fprintf(f, "        i++;\n");
+    fprintf(f, "        if (aceita[estado])\n            melhor = i;\n");
+    fprintf(f, "    }\nfim:\n    return melhor;\n}\n\n");
+
     return 0;
 }
 
@@ -347,23 +858,57 @@ static int gen_casamento_regex(FILE *f, const char *nome, const char *regex)
  * Ao chegar ao fim do arquivo devolve um token TOKEN_FIM. */
 static void gen_token_de_arquivo(FILE *f, int microc)
 {
-    /* TODO(aluno): emitir a leitura real com fgets + sscanf (formato
-     * acima). Linhas em branco sao ignoradas; uma linha malformada deve
-     * ser reportada com o numero da linha do arquivo de tokens. */
-    static const char *const linhas[] = {
+    static const char *const linhas_antes[] = {
+        "static int linha_arq_tokens = 0;",
+        "",
         "static Token token_de_arquivo(void)",
         "{",
+        "    char buf[1024];",
         "    Token t;",
         "    memset(&t, 0, sizeof t);",
-        "    fprintf(stderr, \"opcao --tokens ainda nao implementada\\n\");",
-        "    exit(EXIT_FAILURE);",
+        "    while (fgets(buf, sizeof buf, arquivo_tokens) != NULL) {",
+        "        char *p = buf, *lex_inicio, *lex_fim, *lin_str;",
+        "        int tipo_val, linha_val;",
+        "        linha_arq_tokens++;",
+        "        while (*p == ' ' || *p == '\\t' || *p == '\\r' || *p == '\\n') p++;",
+        "        if (*p == '\\0') continue;",
+        "        if (strncmp(p, \"Token:\", 6) != 0) goto malformado;",
+        "        p = strstr(p + 6, \"tipo =\");",
+        "        if (p == NULL) goto malformado;",
+        "        if (sscanf(p + 6, \"%d\", &tipo_val) != 1) goto malformado;",
+        "        p = strstr(p, \"lexema = '\");",
+        "        if (p == NULL) goto malformado;",
+        "        lex_inicio = p + 10;",
+        "        lin_str = strstr(lex_inicio, \"', linha =\");",
+        "        if (lin_str == NULL) goto malformado;",
+        "        lex_fim = lin_str;",
+        "        if (sscanf(lin_str + 10, \"%d\", &linha_val) != 1) goto malformado;",
+        "        t.tipo = tipo_val;",
+        "        t.linha = linha_val;",
+        NULL
+    };
+    static const char *const linhas_depois[] = {
+        "        {",
+        "            size_t tam = (size_t)(lex_fim - lex_inicio);",
+        "            if (tam >= sizeof t.lexema) tam = sizeof t.lexema - 1;",
+        "            memcpy(t.lexema, lex_inicio, tam);",
+        "            t.lexema[tam] = '\\0';",
+        "        }",
+        "        return t;",
+        "    malformado:",
+        "        fprintf(stderr, \"linha %d do arquivo de tokens malformada\\n\", linha_arq_tokens);",
+        "        exit(EXIT_FAILURE);",
+        "    }",
+        "    t.tipo = TOKEN_FIM;",
         "    return t;",
         "}",
         "",
         NULL
     };
-    (void) microc;
-    emit_linhas(f, linhas);
+    emit_linhas(f, linhas_antes);
+    if (!microc)
+        fputs("        t.coluna = 1;\n", f);
+    emit_linhas(f, linhas_depois);
 }
 
 /* ------------------------------------------------------------------ */
@@ -377,6 +922,7 @@ static const char *const rt_estado[] = {
     "static int imprimir_arvore = 0;    /* opcao --tree */",
     "static int nivel_arvore = 0;",
     "static FILE *arquivo_tokens = NULL; /* opcao --tokens */",
+    "static FILE *arquivo_entrada = NULL;",
     "",
     "static Token token_de_arquivo(void);",
     "",
@@ -577,6 +1123,24 @@ static void gerar_nome_token(FILE *f, const Gramatica *g)
     fputs("    default: return \"token desconhecido\";\n    }\n}\n\n", f);
 }
 
+static void gerar_limpar_recursos(FILE *f, int microc)
+{
+    fputs("static void limpar_recursos(void)\n{\n", f);
+    fputs("    if (arquivo_tokens != NULL) {\n", f);
+    fputs("        fclose(arquivo_tokens);\n", f);
+    fputs("        arquivo_tokens = NULL;\n", f);
+    fputs("    } else {\n", f);
+    if (microc)
+        fputs("        scanner_finalizar();\n", f);
+    else
+        fputs("        if (fonte != NULL) {\n            free(fonte);\n            fonte = NULL;\n        }\n", f);
+    fputs("        if (arquivo_entrada != NULL && arquivo_entrada != stdin) {\n", f);
+    fputs("            fclose(arquivo_entrada);\n", f);
+    fputs("            arquivo_entrada = NULL;\n", f);
+    fputs("        }\n", f);
+    fputs("    }\n}\n\n", f);
+}
+
 static void gerar_posicao_e_avancar(FILE *f, int microc)
 {
     fputs("static void escrever_posicao(void)\n{\n", f);
@@ -745,20 +1309,15 @@ static void gerar_main(FILE *f, const Gramatica *g, const OpcoesGeracao *op)
         fputs("        scanner_iniciar(entrada);\n", f);
     else
         fputs("        fonte = ler_tudo(entrada);\n", f);
+    fputs("        arquivo_entrada = entrada;\n", f);
     fputs("    }\n\n", f);
+    fputs("    atexit(limpar_recursos);\n\n", f);
     fputs("    avancar();\n", f);
     fprintf(f, "    parse_%s();\n", g->nts[g->inicial].nome);
     fputs("    if (tok.tipo != TOKEN_FIM) {\n", f);
     fputs("        fim[0] = TOKEN_FIM;\n        fim[1] = -1;\n", f);
     fputs("        erro_sintatico(fim);\n    }\n", f);
     fputs("    printf(\"entrada aceita\\n\");\n\n", f);
-    fputs("    if (arquivo_tokens != NULL) {\n        fclose(arquivo_tokens);\n", f);
-    fputs("    } else {\n", f);
-    if (op->microc)
-        fputs("        scanner_finalizar();\n", f);
-    else
-        fputs("        free(fonte);\n", f);
-    fputs("        if (entrada != stdin)\n            fclose(entrada);\n    }\n", f);
     fputs("    return 0;\n}\n", f);
 }
 
@@ -804,6 +1363,7 @@ static int gerar_c(const Gramatica *g, const OpcoesGeracao *op)
     emit_linhas(f, rt_estado);
     if (!op->microc)
         erros += gerar_lexico(f, g);
+    gerar_limpar_recursos(f, op->microc);
     gerar_nome_token(f, g);
     gerar_posicao_e_avancar(f, op->microc);
     emit_linhas(f, rt_primitivas);
