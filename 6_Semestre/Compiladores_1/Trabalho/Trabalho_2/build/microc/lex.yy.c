@@ -1,6 +1,6 @@
-#line 2 "build/microc/lex.yy.c"
+#line 1 "build/microc/lex.yy.c"
 
-#line 4 "build/microc/lex.yy.c"
+#line 3 "build/microc/lex.yy.c"
 
 #define  YY_INT_ALIGNED short int
 
@@ -866,12 +866,12 @@ static void guarda_literal(void) {
     microc_yylval.symbol = adiciona_simbolo(literal_buffer, literal_length);
 }
 
-#line 870 "build/microc/lex.yy.c"
+#line 869 "build/microc/lex.yy.c"
 /* -----------------------------------------------------------------------
  * 2. SECAO DE DEFINICOES
  * ------------------------------------------------------------------- */
 
-#line 875 "build/microc/lex.yy.c"
+#line 874 "build/microc/lex.yy.c"
 
 #define INITIAL 0
 #define COMMENT 1
@@ -1100,7 +1100,7 @@ YY_DECL
   * --------------------------------------------------------------------- */
 
  /* --- Fim de arquivo -------------------------------------------------- */
-#line 1104 "build/microc/lex.yy.c"
+#line 1103 "build/microc/lex.yy.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -1515,7 +1515,7 @@ YY_RULE_SETUP
 #line 302 "microc/microc.flex"
 ECHO;
 	YY_BREAK
-#line 1519 "build/microc/lex.yy.c"
+#line 1518 "build/microc/lex.yy.c"
 
 	case YY_END_OF_BUFFER:
 		{
